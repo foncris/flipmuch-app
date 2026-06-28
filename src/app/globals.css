@@ -1,0 +1,122 @@
+:root {
+  --navy: #1f3147;
+  --navy-light: #2c4663;
+  --gold: #a9824c;
+  --cream: #f7f5ef;
+  --paper: #ffffff;
+  --line: #dcd6c9;
+  --ink: #2a2a2a;
+  --muted: #73706a;
+  --red: #a8302b;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--cream);
+  color: var(--ink);
+  font-family: "Helvetica Neue", Arial, sans-serif;
+  line-height: 1.45;
+}
+
+a { color: var(--navy); }
+
+.flipmuch-nav {
+  background: var(--navy);
+  color: #fff;
+  padding: 16px 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 4px solid var(--gold);
+}
+
+.flipmuch-nav .brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+  font-size: 20px;
+  letter-spacing: -0.5px;
+  text-decoration: none;
+  color: #fff;
+}
+
+.flipmuch-nav nav {
+  display: flex;
+  gap: 18px;
+  align-items: center;
+  font-size: 14px;
+}
+
+.flipmuch-nav a.nav-link {
+  color: #cfd6dd;
+  text-decoration: none;
+}
+.flipmuch-nav a.nav-link:hover { color: #fff; }
+
+.btn {
+  display: inline-block;
+  border-radius: 6px;
+  padding: 9px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  border: 1px solid var(--navy);
+  background: #fff;
+  color: var(--navy);
+}
+.btn:hover { background: var(--navy); color: #fff; }
+.btn.primary { background: var(--gold); border-color: var(--gold); color: #fff; }
+.btn.primary:hover { background: #8e6c3d; border-color: #8e6c3d; }
+.btn.danger { color: var(--red); border-color: var(--red); }
+
+.container {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 40px 28px 80px;
+}
+
+.card {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 24px 26px;
+  margin-bottom: 20px;
+}
+
+.auth-form {
+  max-width: 380px;
+  margin: 60px auto;
+}
+
+.auth-form input {
+  width: 100%;
+  border: 1px solid #c9c2b3;
+  border-radius: 5px;
+  padding: 10px 11px;
+  font-size: 14px;
+  margin-bottom: 12px;
+  font-family: inherit;
+}
+
+.auth-form label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--navy-light);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.field-error {
+  color: var(--red);
+  font-size: 12.5px;
+  margin: -6px 0 12px;
+}
+
+.muted { color: var(--muted); font-size: 13.5px; }
