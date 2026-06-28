@@ -36,6 +36,9 @@ export default function LoginPage() {
         <input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
         <label htmlFor="password">Password</label>
         <input id="password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
+        <p className="muted" style={{ marginTop: -6, marginBottom: 10, textAlign: "right" }}>
+          <Link href="/forgot-password">Forgot password?</Link>
+        </p>
         {error && <p className="field-error">{error}</p>}
         <button type="submit" className="btn primary" disabled={loading} style={{ width: "100%" }}>
           {loading ? "Signing in…" : "Log in"}
