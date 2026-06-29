@@ -290,7 +290,11 @@
 
   <div class="card full">
     <h2><span class="num">2</span> Sales Comparables</h2>
-    <p class="sub">Pull 3–6 recently sold comps within a 1.5–2 mile radius, similar sq. ft., beds/baths, and condition. Distance is for your own verification (e.g. Google Maps / MLS) — this tool doesn't pull live MLS data.</p>
+    <p class="sub">Auto-pulled as soon as you enter the subject address above: sold comps within 1.5–2 miles, prioritizing the last 3 months and widening up to 12 months if needed. Always confirm condition and lot size against MLS / your own walkthrough before relying on these.</p>
+    <div class="actions" style="margin-bottom:12px;">
+      <button class="inline-btn gold" id="findCompsBtn" type="button">🔍 Find Sold Comps</button>
+      <span class="muted" id="compsStatus" style="margin-left:10px;font-size:13px;"></span>
+    </div>
     <table>
       <thead>
         <tr><th style="width:26%">Address</th><th>Distance (mi)</th><th>Beds</th><th>Baths</th><th>Sq. Ft.</th><th>Sale Price</th><th>$ / Sq.Ft.</th><th></th></tr>
@@ -998,6 +1002,59 @@ $('addCompBtn').addEventListener('click', ()=>addCompRow());
 [{addr:'',dist:1.0,beds:3,baths:2,sqft:1550,price:265000},
  {addr:'',dist:1.4,beds:3,baths:2,sqft:1620,price:272000},
  {addr:'',dist:1.8,beds:3,baths:1.5,sqft:1480,price:255000}].forEach(addCompRow);
+
+/* ---------- Auto sold-comps lookup (RentCast via /api/comps) ---------- */
+const findCompsBtn = $('findCompsBtn');
+const compsStatusEl = $('compsStatus');
+let lastCompsAddress = '';
+
+async function fetchComps(force){
+  const address = $('subAddress').value.trim();
+  if(!address){
+    compsStatusEl.textContent = 'Enter the subject property address above to pull sold comps.';
+    return;
+  }
+  if(!force && address === lastCompsAddress) return;
+  lastCompsAddress = address;
+
+  const sqft = $('subSqft').value;
+  const beds = $('subBeds').value;
+  const baths = $('subBaths').value;
+  const units = Number($('subUnits').value) || 1;
+  const propertyType = units > 1 ? 'Multi-Family' : 'Single Family';
+
+  compsStatusEl.textContent = 'Searching sold comps…';
+  findCompsBtn.disabled = true;
+
+  try{
+    const qs = new URLSearchParams({ address, sqft, beds, baths, propertyType });
+    const res = await fetch('/api/comps?' + qs.toString());
+    const json = await res.json();
+    if(!res.ok) throw new Error(json.error || 'Comps lookup failed.');
+
+    const comps = json.comps || [];
+    compsBody.innerHTML = '';
+    comps.forEach(c=>{
+      addCompRow({ addr:c.address, dist:c.distance, beds:c.beds, baths:c.baths, sqft:c.sqft, price:c.price });
+    });
+
+    if(comps.length === 0){
+      compsStatusEl.textContent = 'No sold comps found nearby — add comps manually below.';
+    } else {
+      const radiusTxt = json.radiusUsed ? `${json.radiusUsed} mi` : '—';
+      const monthsTxt = json.daysOldUsed ? `${Math.round(json.daysOldUsed/30)} mo` : '—';
+      compsStatusEl.textContent = `Found ${comps.length} sold comp(s) within ${radiusTxt}, last ${monthsTxt}. Verify condition/lot size against MLS.`;
+    }
+    calc();
+  } catch(err){
+    compsStatusEl.textContent = `Comps lookup failed: ${err.message}`;
+  } finally {
+    findCompsBtn.disabled = false;
+  }
+}
+
+$('subAddress').addEventListener('blur', ()=>fetchComps(false));
+findCompsBtn.addEventListener('click', ()=>fetchComps(true));
 
 /* ---------- Use Itemized Carrying Cost Total ---------- */
 $('useItemizedBtn').addEventListener('click', ()=>{
