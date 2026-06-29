@@ -163,6 +163,8 @@
   table input{width:100%;padding:6px 7px;font-size:13px;}
   .comp-foot td{font-weight:700;color:var(--navy);border-bottom:none;padding-top:10px;}
   .rm-btn{background:none;border:none;color:var(--red);font-size:16px;cursor:pointer;line-height:1;}
+  tr.comp-renovated{background:rgba(169,130,76,0.08);}
+  .renovated-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--gold);vertical-align:middle;}
 
   .radio-group{display:flex;gap:18px;align-items:center;flex-wrap:wrap;}
   .radio-group label.opt{
@@ -290,7 +292,7 @@
 
   <div class="card full">
     <h2><span class="num">2</span> Sales Comparables</h2>
-    <p class="sub">Auto-pulled as soon as you enter the subject address above: sold comps within 1.5–2 miles, prioritizing the last 3 months and widening up to 12 months if needed. Always confirm condition and lot size against MLS / your own walkthrough before relying on these.</p>
+    <p class="sub">Auto-pulled as soon as you enter the subject address above: sold comps within 1.5–2 miles, prioritizing the last 3 months (widening up to 12 if needed) and biased toward recently remodeled/updated resales — the ones that actually match a fix-and-flip's post-renovation condition — using price/sq.ft. above the local comp pool's median as the proxy (<span class="renovated-dot"></span> rows below). RentCast has no literal "renovated" flag, so always confirm condition and lot size against MLS photos / your own walkthrough before relying on these.</p>
     <div class="actions" style="margin-bottom:12px;">
       <button class="inline-btn gold" id="findCompsBtn" type="button">🔍 Find Sold Comps</button>
       <span class="muted" id="compsStatus" style="margin-left:10px;font-size:13px;"></span>
@@ -984,8 +986,12 @@ const compsBody = $('compsBody');
 function addCompRow(data){
   data = data || {};
   const tr = document.createElement('tr');
+  if(data.renovated){
+    tr.classList.add('comp-renovated');
+    tr.title = 'Likely remodeled/updated resale — price per sq.ft. is at or above the local comp pool median.';
+  }
   tr.innerHTML = `
-    <td><input type="text" class="c-addr" value="${data.addr||''}" placeholder="456 Oak Ave"></td>
+    <td>${data.renovated ? '<span class="renovated-dot" title="Likely remodeled/updated"></span> ' : ''}<input type="text" class="c-addr" value="${data.addr||''}" placeholder="456 Oak Ave"></td>
     <td><input type="number" class="c-dist" value="${data.dist||''}" step="0.1" style="width:70px;"></td>
     <td><input type="number" class="c-beds" value="${data.beds||''}" style="width:55px;"></td>
     <td><input type="number" class="c-baths" value="${data.baths||''}" step="0.5" style="width:55px;"></td>
@@ -1035,7 +1041,7 @@ async function fetchComps(force){
     const comps = json.comps || [];
     compsBody.innerHTML = '';
     comps.forEach(c=>{
-      addCompRow({ addr:c.address, dist:c.distance, beds:c.beds, baths:c.baths, sqft:c.sqft, price:c.price });
+      addCompRow({ addr:c.address, dist:c.distance, beds:c.beds, baths:c.baths, sqft:c.sqft, price:c.price, renovated:c.likelyRenovated });
     });
 
     if(comps.length === 0){
@@ -1043,7 +1049,8 @@ async function fetchComps(force){
     } else {
       const radiusTxt = json.radiusUsed ? `${json.radiusUsed} mi` : '—';
       const monthsTxt = json.daysOldUsed ? `${Math.round(json.daysOldUsed/30)} mo` : '—';
-      compsStatusEl.textContent = `Found ${comps.length} sold comp(s) within ${radiusTxt}, last ${monthsTxt}. Verify condition/lot size against MLS.`;
+      const renoCount = comps.filter(c=>c.likelyRenovated).length;
+      compsStatusEl.textContent = `Found ${comps.length} sold comp(s) within ${radiusTxt}, last ${monthsTxt} — ${renoCount} flagged as likely remodeled (gold dot). Verify condition/lot size against MLS.`;
     }
     calc();
   } catch(err){
