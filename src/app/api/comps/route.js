@@ -43,7 +43,9 @@ async function fetchRentCastComps({ address, bedrooms, bathrooms, squareFootage,
   if (propertyType) params.set("propertyType", propertyType);
   if (bedrooms) params.set("bedrooms", String(bedrooms));
   if (bathrooms) params.set("bathrooms", String(bathrooms));
-  if (squareFootage) params.set("squareFootage", String(squareFootage));
+  // squareFootage intentionally omitted — passing it narrows RentCast's
+  // candidate pool too aggressively. We rank by sqft similarity in quickScore
+  // instead, which keeps the best matches first without hard-excluding others.
   if (maxRadius) params.set("maxRadius", String(maxRadius));
   if (daysOld) params.set("daysOld", String(daysOld));
 
