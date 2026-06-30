@@ -38,16 +38,15 @@ function normalizePropertyType(type) {
   return t;
 }
 
-async function fetchRentCastComps({ address, bedrooms, bathrooms, squareFootage, propertyType, maxRadius, daysOld }) {
+async function fetchRentCastComps({ address, propertyType, maxRadius }) {
+  // We only pass propertyType and radius to the AVM — NOT beds, baths, sqft,
+  // or daysOld. Passing those filters narrows RentCast's candidate pool too
+  // aggressively (AVM uses MLS data; county records often lag). We handle all
+  // characteristic matching and recency checks ourselves via quickScore and
+  // saleWithinWindow against Property Records.
   const params = new URLSearchParams({ address, compCount: "25" });
   if (propertyType) params.set("propertyType", propertyType);
-  if (bedrooms) params.set("bedrooms", String(bedrooms));
-  if (bathrooms) params.set("bathrooms", String(bathrooms));
-  // squareFootage intentionally omitted — passing it narrows RentCast's
-  // candidate pool too aggressively. We rank by sqft similarity in quickScore
-  // instead, which keeps the best matches first without hard-excluding others.
   if (maxRadius) params.set("maxRadius", String(maxRadius));
-  if (daysOld) params.set("daysOld", String(daysOld));
 
   const res = await fetch(`${RENTCAST_AVM_BASE}?${params.toString()}`, {
     headers: { "X-Api-Key": process.env.RENTCAST_API_KEY },
@@ -181,7 +180,7 @@ export async function GET(request) {
 
   for (const attempt of attempts) {
     try {
-      const data = await fetchRentCastComps({ address, bedrooms, bathrooms, squareFootage, propertyType, ...attempt });
+      const data = await fetchRentCastComps({ address, propertyType, maxRadius: attempt.maxRadius });
       const comps = data?.comparables || [];
       const eligible = comps.filter((c) => isSameType(c) && isOffMarket(c));
 
