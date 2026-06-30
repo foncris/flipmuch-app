@@ -295,7 +295,7 @@
 
   <div class="card full">
     <h2><span class="num">2</span> Sales Comparables</h2>
-    <p class="sub">Auto-pulled as soon as you enter the subject address above: the 3 sold comps that most closely match the subject's property type, square footage, beds and baths, within 1.5–2 miles — prioritizing the last 3 months (widening up to 12 if needed). Active for-sale listings are always excluded outright — an asking price is never a sold comp. Different housing types (e.g. condos/townhomes when the subject is a single-family home) are excluded too. Each remaining candidate is cross-checked against county-recorded deed sale data to confirm it actually closed, rather than being withdrawn or expired off-market (<span class="sale-badge verified">SOLD</span> = confirmed closing date/price from county records; <span class="sale-badge unverified">UNCONF.</span> = off-market but the recorded sale price wasn't available, e.g. in a non-disclosure state — verify manually). Among comps of similar confidence, ones biased toward recently remodeled/updated resales — using price/sq.ft. above the local comp pool's median as the proxy (<span class="renovated-dot"></span> rows below) — are favored slightly, since that better reflects a fix-and-flip's post-renovation condition. Always confirm condition and lot size against MLS photos / your own walkthrough before relying on these.</p>
+    <p class="sub">Auto-pulled as soon as you enter the subject address above: the 3 comps that most closely match the subject's property type, square footage, beds and baths, within 1.5–2 miles — prioritizing closed sales in the last 90 days, widening to 6 and then up to 12 months only if not enough confirmed sales turn up closer in. Every candidate must clear two gates: (1) it can't be a currently active listing, and (2) it must have an actual county-recorded deed sale (<span class="sale-badge verified">SOLD</span> badge, with the closing date) inside that time window — properties that are pending, under contract, accepting backup offers, withdrawn, or expired without selling all fail gate 2 and are dropped, never substituted in. If fewer than 3 confirmed sales exist anywhere within 12 months/2 miles, fewer than 3 are shown rather than padding the list with anything unconfirmed — add comps manually in that case. Among qualifying comps, ones biased toward recently remodeled/updated resales — using price/sq.ft. above the local comp pool's median as the proxy (<span class="renovated-dot"></span> rows below) — are favored slightly, since that better reflects a fix-and-flip's post-renovation condition. Always confirm condition and lot size against MLS photos / your own walkthrough before relying on these.</p>
     <div class="actions" style="margin-bottom:12px;">
       <button class="inline-btn gold" id="findCompsBtn" type="button">🔍 Find Sold Comps</button>
       <span class="muted" id="compsStatus" style="margin-left:10px;font-size:13px;"></span>
@@ -1054,13 +1054,19 @@ async function fetchComps(force){
     });
 
     if(comps.length === 0){
-      compsStatusEl.textContent = 'No confirmed sold comps found nearby (active listings and unconfirmed sales were excluded) — add comps manually below.';
+      compsStatusEl.textContent = 'No confirmed sold comps found nearby within 12 months/2 mi (active, pending, under-contract, and withdrawn listings were excluded) — add comps manually below.';
     } else {
       const radiusTxt = json.radiusUsed ? `${json.radiusUsed} mi` : '—';
       const monthsTxt = json.daysOldUsed ? `${Math.round(json.daysOldUsed/30)} mo` : '—';
       const renoCount = comps.filter(c=>c.likelyRenovated).length;
-      const verifiedCount = json.verifiedCount ?? comps.filter(c=>c.verified).length;
-      compsStatusEl.textContent = `Found ${comps.length} sold comp(s) within ${radiusTxt}, last ${monthsTxt} — ${verifiedCount} of ${comps.length} confirmed via county deed records (SOLD badge), ${comps.length-verifiedCount} unconfirmed price (UNCONF. badge), ${renoCount} flagged as likely remodeled (gold dot). Active listings already excluded. Verify condition/lot size against MLS.`;
+      const requested = json.requestedLimit || comps.length;
+      const shortfall = requested - comps.length;
+      let msg = `Found ${comps.length} confirmed sold comp(s) — verified against county deed records — within ${radiusTxt}, last ${monthsTxt}. ${renoCount} flagged as likely remodeled (gold dot).`;
+      if (shortfall > 0) {
+        msg += ` Only ${comps.length} of the requested ${requested} confirmed sales were available even after widening to 12 months/2 mi — add comps manually to fill the gap.`;
+      }
+      msg += ' Active, pending/under-contract, and withdrawn listings were excluded outright. Verify condition/lot size against MLS.';
+      compsStatusEl.textContent = msg;
     }
     calc();
   } catch(err){
