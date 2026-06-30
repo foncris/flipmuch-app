@@ -5,14 +5,21 @@ const RENTCAST_AVM_BASE = "https://api.rentcast.io/v1/avm/value";
 const RENTCAST_RECORDS_BASE = "https://api.rentcast.io/v1/properties";
 const DEFAULT_COMP_LIMIT = 3;
 const MAX_COMP_LIMIT = 10;
-// Safety cap on how many distinct addresses we'll ever ask Property Records
-// about in one request. RentCast's AVM comp pool is already capped at 25
-// (compCount below), so this should rarely if ever bind — it just protects
-// against a pathological response.
-const MAX_CANDIDATES_TO_VERIFY = 30;
+// Hard cap on Property Records lookups per request across ALL escalation
+// stages combined. In the best case (first `limit` candidates are all
+// confirmed sold) we make exactly `limit` calls; this cap protects against
+// worst-case areas with very few actual closings where we'd otherwise chase
+// every candidate in the pool.
+const MAX_TOTAL_VERIFICATIONS = 20;
 // County deed recording typically lags the actual closing by a few weeks, so
 // a sale recorded slightly outside the nominal search window is still valid.
 const SALE_RECORDING_GRACE_DAYS = 45;
+// A comp whose price/sqft is below this fraction of the pool's median is
+// almost certainly a stale public-record entry (e.g. an inter-family
+// transfer, tax-assessed value, or a county record that hasn't caught up to
+// a recent MLS closing). Exclude it as an outlier rather than letting it
+// drag the ARV down.
+const OUTLIER_RATIO_FLOOR = 0.45;
 // Address fragments that strongly signal a condo/townhouse unit (e.g. "Unit
 // 18AB", "Apt 802", "#304", "PH2") regardless of whatever propertyType field
 // RentCast did or didn't attach to that comp record.
@@ -25,8 +32,6 @@ function median(nums) {
   return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
 }
 
-// Normalizes RentCast's various property-type strings into a small set of
-// buckets so a subject's actual housing type can be enforced strictly.
 function normalizePropertyType(type) {
   if (!type) return null;
   const t = String(type).toLowerCase();
@@ -39,16 +44,6 @@ function normalizePropertyType(type) {
   return t;
 }
 
-// Pulls candidate comparable properties for a subject address from
-// RentCast's AVM endpoint. RentCast's comp engine already ranks results by
-// similarity (the "correlation" field) using beds/baths/sqft signals it has
-// on file for each property — but its own comparable records only ever
-// distinguish a listing `status` of "Active" or "Inactive" (when present at
-// all). "Inactive" does NOT mean sold — it can also mean withdrawn, expired,
-// canceled, or under contract/pending a closing (e.g. "accepting backup
-// offers"). So this endpoint alone is treated as a CANDIDATE pool, never as
-// confirmed sold comps — see saleWithinWindow() below for the actual sale
-// confirmation step, which is the only thing that actually counts.
 async function fetchRentCastComps({ address, bedrooms, bathrooms, squareFootage, propertyType, maxRadius, daysOld }) {
   const params = new URLSearchParams({ address, compCount: "25" });
   if (propertyType) params.set("propertyType", propertyType);
@@ -62,7 +57,6 @@ async function fetchRentCastComps({ address, bedrooms, bathrooms, squareFootage,
     headers: { "X-Api-Key": process.env.RENTCAST_API_KEY },
     cache: "no-store",
   });
-
   if (!res.ok) {
     const text = await res.text().catch(() => "");
     throw new Error(`RentCast ${res.status}: ${text.slice(0, 300) || res.statusText}`);
@@ -85,13 +79,10 @@ async function fetchPropertyRecord(address) {
   }
 }
 
-// Checks a previously-fetched Property Records entry for an ACTUAL recorded
-// deed sale that falls inside the given recency window. This is the only
-// thing in this route that confirms a closing — everything else (a listing
-// going "Inactive", a status string like "Pending" or "Accepting Backup
-// Offers", a removedDate) is just a signal that a property left the active
-// market, NOT proof it sold. A property that's under contract, withdrawn,
-// expired, or canceled will correctly fail this check and get excluded.
+// Checks a Property Records entry for an ACTUAL recorded deed sale inside
+// the given recency window. Properties under contract, withdrawn, expired,
+// or pending fail this check. Only a recorded lastSaleDate + lastSalePrice
+// counts as a confirmed closed sale.
 function saleWithinWindow(record, maxDaysOld) {
   if (!record?.lastSaleDate || !record?.lastSalePrice) return null;
   if (maxDaysOld) {
@@ -104,9 +95,7 @@ function saleWithinWindow(record, maxDaysOld) {
 export async function GET(request) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    return NextResponse.json({ error: "Not signed in" }, { status: 401 });
-  }
+  if (!user) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
 
   if (!process.env.RENTCAST_API_KEY) {
     return NextResponse.json(
@@ -117,9 +106,7 @@ export async function GET(request) {
 
   const { searchParams } = new URL(request.url);
   const address = searchParams.get("address")?.trim();
-  if (!address) {
-    return NextResponse.json({ error: "Address is required." }, { status: 400 });
-  }
+  if (!address) return NextResponse.json({ error: "Address is required." }, { status: 400 });
 
   const bedrooms = searchParams.get("beds") || undefined;
   const bathrooms = searchParams.get("baths") || undefined;
@@ -136,56 +123,52 @@ export async function GET(request) {
     ? Math.min(Math.round(requestedLimit), MAX_COMP_LIMIT)
     : DEFAULT_COMP_LIMIT;
 
-  // A comp is disqualified if it's a different housing type than the
-  // subject — checked two ways since RentCast's own propertyType field
-  // isn't always populated on every comp record: (1) the field itself, and
-  // (2) the address literally reading like a condo/townhouse unit (e.g.
-  // "Unit 18AB", "Apt 802", "#304").
   function isSameType(c) {
     if (!subjectType) return true;
     const fieldType = normalizePropertyType(c.propertyType);
     if (fieldType && fieldType !== subjectType) return false;
-    if (subjectType === "single-family" && UNIT_ADDRESS_PATTERN.test(c.formattedAddress || c.addressLine1 || "")) {
-      return false;
-    }
+    if (subjectType === "single-family" && UNIT_ADDRESS_PATTERN.test(c.formattedAddress || c.addressLine1 || "")) return false;
     return true;
   }
 
-  // Cheap pre-filter: if RentCast happens to have populated `status`,
-  // exclude anything explicitly flagged "Active" before we even bother
-  // looking it up in Property Records. This is NOT the decisive check —
-  // RentCast's status field is sparse/unreliable and doesn't expose
-  // "Pending"/"Under Contract"/"Accepting Backup Offers" as distinct values,
-  // so a not-yet-closed property can still slip past this filter. The real
-  // gate is saleWithinWindow() below, against actual county deed records.
-  function isOffMarket(c) {
-    return c.status !== "Active";
-  }
+  // Cheap pre-filter: exclude anything RentCast explicitly labels Active.
+  // This is not the decisive sold-check (status field is sparse/unreliable)
+  // — saleWithinWindow() against county deed records is the real gate.
+  function isOffMarket(c) { return c.status !== "Active"; }
 
   function addressOf(c) {
     return c.formattedAddress || [c.addressLine1, c.city, c.state].filter(Boolean).join(", ");
   }
 
-  // Widen the net in stages: tight + recent first (90 days / 1.5 mi), then
-  // relax distance, then relax recency, up to 2 mi / 365 days (12 months).
-  // Per appraiser policy, "enough" means enough CONFIRMED CLOSED sales that
-  // also match the subject's housing type — a bigger pool of unconfirmed,
-  // pending, or wrong-type properties doesn't count, and there is no
-  // fallback to anything less than a confirmed sale at any stage.
+  // Pre-score candidates by similarity to the subject BEFORE spending API
+  // calls on Property Records lookups. We verify in best-first order and
+  // stop the moment we have `limit` confirmed sales — so for a typical
+  // search with 3–5 verified sales near the subject specs we only make
+  // 3–5 Property Records calls instead of verifying all 25 AVM candidates.
+  function quickScore(c) {
+    const sqftDiff = subjSqft && c.squareFootage ? Math.abs(c.squareFootage - subjSqft) / subjSqft : 0;
+    const bedsDiff = subjBeds != null && c.bedrooms != null ? Math.abs(c.bedrooms - subjBeds) : 0;
+    const bathsDiff = subjBaths != null && c.bathrooms != null ? Math.abs(c.bathrooms - subjBaths) : 0;
+    return sqftDiff * 100 + bedsDiff * 15 + bathsDiff * 12 + (c.distance || 0) * 1.5;
+  }
+
   const attempts = [
     { maxRadius: 1.5, daysOld: 90 },
     { maxRadius: 1.5, daysOld: 180 },
-    { maxRadius: 2, daysOld: 180 },
-    { maxRadius: 2, daysOld: 365 },
+    { maxRadius: 2,   daysOld: 180 },
+    { maxRadius: 2,   daysOld: 365 },
   ];
 
-  // Cache raw Property Records lookups by address across attempts — later,
-  // wider attempts mostly re-include the same nearby candidates, so this
-  // avoids re-fetching a record (and its lastSaleDate/lastSalePrice) more
-  // than once per address for the whole request.
+  // Cache Property Records lookups across all escalation stages — if a
+  // candidate appears again in a wider search, we reuse the cached record
+  // instead of making another API call.
   const recordCache = new Map();
+  let verificationCount = 0;
+
   async function getCachedPropertyRecord(addr) {
     if (recordCache.has(addr)) return recordCache.get(addr);
+    if (verificationCount >= MAX_TOTAL_VERIFICATIONS) return null; // budget exhausted
+    verificationCount++;
     const record = await fetchPropertyRecord(addr);
     recordCache.set(addr, record);
     return record;
@@ -201,35 +184,36 @@ export async function GET(request) {
       const data = await fetchRentCastComps({ address, bedrooms, bathrooms, squareFootage, propertyType, ...attempt });
       const comps = data?.comparables || [];
       const eligible = comps.filter((c) => isSameType(c) && isOffMarket(c));
-      const toCheck = eligible.slice(0, MAX_CANDIDATES_TO_VERIFY);
 
-      const records = await Promise.all(
-        toCheck.map((c) => getCachedPropertyRecord(addressOf(c)).catch(() => null))
-      );
+      // Sort by spec-similarity BEFORE verifying so we call Property Records
+      // on the most-likely-to-qualify candidates first and stop early.
+      const sorted = eligible.slice().sort((a, b) => quickScore(a) - quickScore(b));
 
-      const built = toCheck
-        .map((c, i) => {
-          const verification = saleWithinWindow(records[i], attempt.daysOld);
-          if (!verification) return null; // not a confirmed closed sale — drop it, no exceptions
-          const price = verification.salePrice;
-          const sqft = c.squareFootage ?? null;
-          if (!price || !sqft) return null;
-          return {
-            address: addressOf(c),
-            distance: c.distance != null ? Number(Number(c.distance).toFixed(2)) : null,
-            beds: c.bedrooms ?? null,
-            baths: c.bathrooms ?? null,
-            sqft,
-            price,
-            pricePerSqft: price / sqft,
-            lotSize: c.lotSize ?? null,
-            yearBuilt: c.yearBuilt ?? null,
-            soldDate: verification.saleDate,
-            verified: true,
-            correlation: c.correlation ?? null,
-          };
-        })
-        .filter(Boolean);
+      const built = [];
+      for (const c of sorted) {
+        if (built.length >= limit) break;
+        const addr = addressOf(c);
+        const record = await getCachedPropertyRecord(addr);
+        const verification = saleWithinWindow(record, attempt.daysOld);
+        if (!verification) continue;
+        const price = verification.salePrice;
+        const sqft = c.squareFootage ?? null;
+        if (!price || !sqft) continue;
+        built.push({
+          address: addr,
+          distance: c.distance != null ? Number(Number(c.distance).toFixed(2)) : null,
+          beds: c.bedrooms ?? null,
+          baths: c.bathrooms ?? null,
+          sqft,
+          price,
+          pricePerSqft: price / sqft,
+          lotSize: c.lotSize ?? null,
+          yearBuilt: c.yearBuilt ?? null,
+          soldDate: verification.saleDate,
+          verified: true,
+          correlation: c.correlation ?? null,
+        });
+      }
 
       const isLastAttempt = attempt === attempts[attempts.length - 1];
       if (built.length >= limit || isLastAttempt) {
@@ -238,13 +222,8 @@ export async function GET(request) {
         usedAttempt = attempt;
         break;
       }
-      // Not enough confirmed sales yet at this radius/recency — widen and
-      // try again rather than settling for fewer-than-requested comps too
-      // early.
     } catch (err) {
       lastError = err;
-      // Keep trying wider searches — a bad geocode at a tight radius can
-      // still succeed once the query relaxes.
     }
   }
 
@@ -255,29 +234,29 @@ export async function GET(request) {
     );
   }
 
-  // Fix-and-flip ARV comps need to reflect POST-renovation value, not just
-  // any nearby sale. RentCast's AVM doesn't expose a literal "renovated"
-  // flag, so we use price/sqft relative to the (confirmed-sold, type-
-  // matched) comp pool as the proxy: properties that sold well above the
-  // pool's median $/sqft are almost always the updated/flipped resales.
-  const medianPricePerSqft = median(verifiedComps.map((c) => c.pricePerSqft).filter(Boolean));
+  // Outlier guard: a comp whose price/sqft falls below OUTLIER_RATIO_FLOOR
+  // of the pool median is almost always a stale public-record entry (inter-
+  // family transfer, tax basis, or county data that lags the actual MLS
+  // closing). Drop it rather than letting one bad data point tank the ARV.
+  const rawMedian = median(verifiedComps.map((c) => c.pricePerSqft).filter(Boolean));
+  const filtered = rawMedian
+    ? verifiedComps.filter((c) => !c.pricePerSqft || c.pricePerSqft >= rawMedian * OUTLIER_RATIO_FLOOR)
+    : verifiedComps;
 
-  // Rank by how closely each comp matches the SUBJECT's own sqft/beds/full
-  // baths — this is what keeps a 3,500 sf / 5-bed / 5-bath house from being
-  // "matched" against smaller or differently-configured homes just because
-  // they're nearby. Likely-renovated comps get a small tiebreak bonus since
-  // they better represent the subject's post-rehab condition.
-  const scored = verifiedComps.map((c) => {
+  const medianPricePerSqft = median(filtered.map((c) => c.pricePerSqft).filter(Boolean));
+
+  // Final similarity rank with renovated-resale tiebreak.
+  const scored = filtered.map((c) => {
     const sqftDiffPct = subjSqft && c.sqft ? Math.abs(c.sqft - subjSqft) / subjSqft : 0;
     const bedsDiff = subjBeds != null && c.beds != null ? Math.abs(c.beds - subjBeds) : 0;
     const bathsDiff = subjBaths != null && c.baths != null ? Math.abs(c.baths - subjBaths) : 0;
     const likelyRenovated = medianPricePerSqft ? c.pricePerSqft >= medianPricePerSqft : null;
     const similarityScore =
-      sqftDiffPct * 100 +        // ~1 pt per 1% sqft difference from subject
-      bedsDiff * 15 +            // 15 pts per bedroom off
-      bathsDiff * 12 +           // 12 pts per full bath off
-      (c.distance || 0) * 1.5 -  // small nudge toward closer comps
-      (likelyRenovated ? 4 : 0); // small nudge toward likely-updated resales
+      sqftDiffPct * 100 +
+      bedsDiff * 15 +
+      bathsDiff * 12 +
+      (c.distance || 0) * 1.5 -
+      (likelyRenovated ? 4 : 0);
     return { ...c, likelyRenovated, similarityScore };
   });
 
@@ -300,5 +279,6 @@ export async function GET(request) {
     compsConsidered: rawEligibleCount,
     verifiedCount: finalComps.length,
     requestedLimit: limit,
+    apiCallsUsed: verificationCount + (usedAttempt ? attempts.indexOf(usedAttempt) + 1 : 0),
   });
 }
