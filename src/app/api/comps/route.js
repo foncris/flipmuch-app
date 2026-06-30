@@ -14,14 +14,6 @@ const MAX_TOTAL_VERIFICATIONS = 20;
 // County deed recording typically lags the actual closing by a few weeks, so
 // a sale recorded slightly outside the nominal search window is still valid.
 const SALE_RECORDING_GRACE_DAYS = 45;
-// A comp whose price/sqft is below this fraction of the POOL MAXIMUM is
-// almost certainly a stale public-record entry (e.g. an inter-family
-// transfer, tax-assessed value, or a county record that hasn't caught up to
-// a recent MLS closing). Anchoring to the maximum — not the median — means
-// a single low outlier can't drag the reference point down and hide itself.
-// Example: pool of [$40/sf, $123/sf] → max=$123, floor=0.40*$123=$49.20
-// → $40/sf is correctly flagged and excluded.
-const OUTLIER_RATIO_FLOOR = 0.40;
 // Address fragments that strongly signal a condo/townhouse unit (e.g. "Unit
 // 18AB", "Apt 802", "#304", "PH2") regardless of whatever propertyType field
 // RentCast did or didn't attach to that comp record.
@@ -154,11 +146,17 @@ export async function GET(request) {
     return sqftDiff * 100 + bedsDiff * 15 + bathsDiff * 12 + (c.distance || 0) * 1.5;
   }
 
+  // Escalation ladder: tight + recent first, widen radius/recency until we
+  // have `limit` confirmed sales. Extends to 24 months (730 days) for thin
+  // markets — a seasoned comp is better than no comp, and the UI will
+  // surface exactly how far back the search had to reach.
   const attempts = [
-    { maxRadius: 1.5, daysOld: 90 },
+    { maxRadius: 1.5, daysOld: 90  },
     { maxRadius: 1.5, daysOld: 180 },
     { maxRadius: 2,   daysOld: 180 },
     { maxRadius: 2,   daysOld: 365 },
+    { maxRadius: 2,   daysOld: 730 },
+    { maxRadius: 3,   daysOld: 730 },
   ];
 
   // Cache Property Records lookups across all escalation stages — if a
@@ -236,22 +234,10 @@ export async function GET(request) {
     );
   }
 
-  // Outlier guard: anchor to the pool MAXIMUM $/sqft, not the median.
-  // Using the median as the reference lets a single low outlier drag the
-  // reference point down and hide itself (e.g. $40/sf in a pool where every
-  // other comp is $120+/sf lowers the median to ~$80/sf, and 45% of $80 is
-  // only $36 — so $40 passes). Anchoring to the max prevents that:
-  // $40/sf vs max $123/sf → floor = 0.40 * $123 = $49.20 → $40 excluded.
-  const ppsfs = verifiedComps.map((c) => c.pricePerSqft).filter(Boolean);
-  const maxPpsf = ppsfs.length ? Math.max(...ppsfs) : null;
-  const filtered = maxPpsf
-    ? verifiedComps.filter((c) => !c.pricePerSqft || c.pricePerSqft >= maxPpsf * OUTLIER_RATIO_FLOOR)
-    : verifiedComps;
-
-  const medianPricePerSqft = median(filtered.map((c) => c.pricePerSqft).filter(Boolean));
+  const medianPricePerSqft = median(verifiedComps.map((c) => c.pricePerSqft).filter(Boolean));
 
   // Final similarity rank with renovated-resale tiebreak.
-  const scored = filtered.map((c) => {
+  const scored = verifiedComps.map((c) => {
     const sqftDiffPct = subjSqft && c.sqft ? Math.abs(c.sqft - subjSqft) / subjSqft : 0;
     const bedsDiff = subjBeds != null && c.beds != null ? Math.abs(c.beds - subjBeds) : 0;
     const bathsDiff = subjBaths != null && c.baths != null ? Math.abs(c.baths - subjBaths) : 0;
