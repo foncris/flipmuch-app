@@ -14,12 +14,14 @@ const MAX_TOTAL_VERIFICATIONS = 20;
 // County deed recording typically lags the actual closing by a few weeks, so
 // a sale recorded slightly outside the nominal search window is still valid.
 const SALE_RECORDING_GRACE_DAYS = 45;
-// A comp whose price/sqft is below this fraction of the pool's median is
+// A comp whose price/sqft is below this fraction of the POOL MAXIMUM is
 // almost certainly a stale public-record entry (e.g. an inter-family
 // transfer, tax-assessed value, or a county record that hasn't caught up to
-// a recent MLS closing). Exclude it as an outlier rather than letting it
-// drag the ARV down.
-const OUTLIER_RATIO_FLOOR = 0.45;
+// a recent MLS closing). Anchoring to the maximum — not the median — means
+// a single low outlier can't drag the reference point down and hide itself.
+// Example: pool of [$40/sf, $123/sf] → max=$123, floor=0.40*$123=$49.20
+// → $40/sf is correctly flagged and excluded.
+const OUTLIER_RATIO_FLOOR = 0.40;
 // Address fragments that strongly signal a condo/townhouse unit (e.g. "Unit
 // 18AB", "Apt 802", "#304", "PH2") regardless of whatever propertyType field
 // RentCast did or didn't attach to that comp record.
@@ -234,13 +236,16 @@ export async function GET(request) {
     );
   }
 
-  // Outlier guard: a comp whose price/sqft falls below OUTLIER_RATIO_FLOOR
-  // of the pool median is almost always a stale public-record entry (inter-
-  // family transfer, tax basis, or county data that lags the actual MLS
-  // closing). Drop it rather than letting one bad data point tank the ARV.
-  const rawMedian = median(verifiedComps.map((c) => c.pricePerSqft).filter(Boolean));
-  const filtered = rawMedian
-    ? verifiedComps.filter((c) => !c.pricePerSqft || c.pricePerSqft >= rawMedian * OUTLIER_RATIO_FLOOR)
+  // Outlier guard: anchor to the pool MAXIMUM $/sqft, not the median.
+  // Using the median as the reference lets a single low outlier drag the
+  // reference point down and hide itself (e.g. $40/sf in a pool where every
+  // other comp is $120+/sf lowers the median to ~$80/sf, and 45% of $80 is
+  // only $36 — so $40 passes). Anchoring to the max prevents that:
+  // $40/sf vs max $123/sf → floor = 0.40 * $123 = $49.20 → $40 excluded.
+  const ppsfs = verifiedComps.map((c) => c.pricePerSqft).filter(Boolean);
+  const maxPpsf = ppsfs.length ? Math.max(...ppsfs) : null;
+  const filtered = maxPpsf
+    ? verifiedComps.filter((c) => !c.pricePerSqft || c.pricePerSqft >= maxPpsf * OUTLIER_RATIO_FLOOR)
     : verifiedComps;
 
   const medianPricePerSqft = median(filtered.map((c) => c.pricePerSqft).filter(Boolean));
