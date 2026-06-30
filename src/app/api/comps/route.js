@@ -197,6 +197,11 @@ export async function GET(request) {
         const price = verification.salePrice;
         const sqft = c.squareFootage ?? null;
         if (!price || !sqft) continue;
+        // Reject distressed / non-arm's-length sales below $50k
+        if (price < 50000) continue;
+        // Dedup: skip if we already have a comp with same price + sqft
+        // (subdivision effect — sequential addresses, identical specs)
+        if (built.some((b) => b.price === price && b.sqft === sqft)) continue;
         built.push({
           address: addr,
           distance: c.distance != null ? Number(Number(c.distance).toFixed(2)) : null,
