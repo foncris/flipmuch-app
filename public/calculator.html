@@ -165,6 +165,9 @@
   .rm-btn{background:none;border:none;color:var(--red);font-size:16px;cursor:pointer;line-height:1;}
   tr.comp-renovated{background:rgba(169,130,76,0.08);}
   .renovated-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--gold);vertical-align:middle;}
+  .sale-badge{display:inline-block;font-size:10px;font-weight:700;padding:1px 5px;border-radius:3px;vertical-align:middle;margin-right:4px;letter-spacing:.02em;}
+  .sale-badge.verified{background:#1f7a3d;color:#fff;}
+  .sale-badge.unverified{background:#b8860b;color:#fff;}
 
   .radio-group{display:flex;gap:18px;align-items:center;flex-wrap:wrap;}
   .radio-group label.opt{
@@ -292,7 +295,7 @@
 
   <div class="card full">
     <h2><span class="num">2</span> Sales Comparables</h2>
-    <p class="sub">Auto-pulled as soon as you enter the subject address above: the 3 sold comps that most closely match the subject's property type, square footage, beds and baths, within 1.5–2 miles — prioritizing the last 3 months (widening up to 12 if needed). Different housing types (e.g. condos/townhomes when the subject is a single-family home) are excluded. Among similarly-matched comps, ones biased toward recently remodeled/updated resales — using price/sq.ft. above the local comp pool's median as the proxy (<span class="renovated-dot"></span> rows below) — are favored slightly, since that better reflects a fix-and-flip's post-renovation condition. RentCast has no literal "renovated" flag, so always confirm condition and lot size against MLS photos / your own walkthrough before relying on these.</p>
+    <p class="sub">Auto-pulled as soon as you enter the subject address above: the 3 sold comps that most closely match the subject's property type, square footage, beds and baths, within 1.5–2 miles — prioritizing the last 3 months (widening up to 12 if needed). Active for-sale listings are always excluded outright — an asking price is never a sold comp. Different housing types (e.g. condos/townhomes when the subject is a single-family home) are excluded too. Each remaining candidate is cross-checked against county-recorded deed sale data to confirm it actually closed, rather than being withdrawn or expired off-market (<span class="sale-badge verified">SOLD</span> = confirmed closing date/price from county records; <span class="sale-badge unverified">UNCONF.</span> = off-market but the recorded sale price wasn't available, e.g. in a non-disclosure state — verify manually). Among comps of similar confidence, ones biased toward recently remodeled/updated resales — using price/sq.ft. above the local comp pool's median as the proxy (<span class="renovated-dot"></span> rows below) — are favored slightly, since that better reflects a fix-and-flip's post-renovation condition. Always confirm condition and lot size against MLS photos / your own walkthrough before relying on these.</p>
     <div class="actions" style="margin-bottom:12px;">
       <button class="inline-btn gold" id="findCompsBtn" type="button">🔍 Find Sold Comps</button>
       <span class="muted" id="compsStatus" style="margin-left:10px;font-size:13px;"></span>
@@ -990,8 +993,14 @@ function addCompRow(data){
     tr.classList.add('comp-renovated');
     tr.title = 'Likely remodeled/updated resale — price per sq.ft. is at or above the local comp pool median.';
   }
+  let saleBadge = '';
+  if (data.verified === true) {
+    saleBadge = `<span class="sale-badge verified" title="${data.soldDate ? 'Confirmed closed sale ('+data.soldDate.slice(0,10)+') from county deed records' : 'Confirmed closed sale from county deed records'}">SOLD</span> `;
+  } else if (data.verified === false) {
+    saleBadge = '<span class="sale-badge unverified" title="Off-market, but the recorded sale price wasn\'t available to confirm (e.g. non-disclosure state) — verify manually">UNCONF.</span> ';
+  }
   tr.innerHTML = `
-    <td>${data.renovated ? '<span class="renovated-dot" title="Likely remodeled/updated"></span> ' : ''}<input type="text" class="c-addr" value="${data.addr||''}" placeholder="456 Oak Ave"></td>
+    <td>${saleBadge}${data.renovated ? '<span class="renovated-dot" title="Likely remodeled/updated"></span> ' : ''}<input type="text" class="c-addr" value="${data.addr||''}" placeholder="456 Oak Ave"></td>
     <td><input type="number" class="c-dist" value="${data.dist||''}" step="0.1" style="width:70px;"></td>
     <td><input type="number" class="c-beds" value="${data.beds||''}" style="width:55px;"></td>
     <td><input type="number" class="c-baths" value="${data.baths||''}" step="0.5" style="width:55px;"></td>
@@ -1041,16 +1050,17 @@ async function fetchComps(force){
     const comps = json.comps || [];
     compsBody.innerHTML = '';
     comps.forEach(c=>{
-      addCompRow({ addr:c.address, dist:c.distance, beds:c.beds, baths:c.baths, sqft:c.sqft, price:c.price, renovated:c.likelyRenovated });
+      addCompRow({ addr:c.address, dist:c.distance, beds:c.beds, baths:c.baths, sqft:c.sqft, price:c.price, renovated:c.likelyRenovated, verified:c.verified, soldDate:c.soldDate });
     });
 
     if(comps.length === 0){
-      compsStatusEl.textContent = 'No sold comps found nearby — add comps manually below.';
+      compsStatusEl.textContent = 'No confirmed sold comps found nearby (active listings and unconfirmed sales were excluded) — add comps manually below.';
     } else {
       const radiusTxt = json.radiusUsed ? `${json.radiusUsed} mi` : '—';
       const monthsTxt = json.daysOldUsed ? `${Math.round(json.daysOldUsed/30)} mo` : '—';
       const renoCount = comps.filter(c=>c.likelyRenovated).length;
-      compsStatusEl.textContent = `Found ${comps.length} sold comp(s) within ${radiusTxt}, last ${monthsTxt} — ${renoCount} flagged as likely remodeled (gold dot). Verify condition/lot size against MLS.`;
+      const verifiedCount = json.verifiedCount ?? comps.filter(c=>c.verified).length;
+      compsStatusEl.textContent = `Found ${comps.length} sold comp(s) within ${radiusTxt}, last ${monthsTxt} — ${verifiedCount} of ${comps.length} confirmed via county deed records (SOLD badge), ${comps.length-verifiedCount} unconfirmed price (UNCONF. badge), ${renoCount} flagged as likely remodeled (gold dot). Active listings already excluded. Verify condition/lot size against MLS.`;
     }
     calc();
   } catch(err){
