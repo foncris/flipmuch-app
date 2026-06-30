@@ -147,16 +147,14 @@ export async function GET(request) {
   }
 
   // Escalation ladder: tight + recent first, widen radius/recency until we
-  // have `limit` confirmed sales. Extends to 24 months (730 days) for thin
-  // markets — a seasoned comp is better than no comp, and the UI will
-  // surface exactly how far back the search had to reach.
+  // have `limit` confirmed sales. Max seasoning is 12 months — beyond that
+  // the comps are too stale to be reliable for underwriting.
   const attempts = [
     { maxRadius: 1.5, daysOld: 90  },
     { maxRadius: 1.5, daysOld: 180 },
     { maxRadius: 2,   daysOld: 180 },
     { maxRadius: 2,   daysOld: 365 },
-    { maxRadius: 2,   daysOld: 730 },
-    { maxRadius: 3,   daysOld: 730 },
+    { maxRadius: 3,   daysOld: 365 },
   ];
 
   // Cache Property Records lookups across all escalation stages — if a
