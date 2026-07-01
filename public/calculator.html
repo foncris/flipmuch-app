@@ -28,8 +28,6 @@
     background:var(--cream);
     color:var(--ink);
     line-height:1.4;
-    overflow-x:hidden; /* prevent sideways scroll on mobile */
-    max-width:100%;
   }
   header{
     background:var(--navy);
@@ -275,10 +273,9 @@
     .toggle-row{flex-wrap:wrap;gap:8px;}
     .toggle-row .switch{flex-shrink:0;align-self:flex-start;margin-top:2px;}
 
-    /* Breakdown: keep as table, just shrink font and let label wrap */
-    .breakdown{table-layout:fixed;width:100%;}
-    .breakdown td:first-child{width:70%;word-break:break-word;white-space:normal;font-size:12.5px;}
-    .breakdown td.amt{width:30%;font-size:12.5px;text-align:right;white-space:nowrap;}
+    /* Breakdown: scroll horizontally so amounts are never clipped */
+    .breakdown-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+    .breakdown{min-width:320px;font-size:12.5px;}
 
     footer{padding:0 14px 40px;}
   }
@@ -745,6 +742,7 @@
 
   <div class="card full">
     <h2><span class="num">7</span> Full Deal Breakdown</h2>
+    <div class="breakdown-wrap">
     <table class="breakdown">
       <tr class="section-label"><td colspan="2">Costs</td></tr>
       <tr><td>Purchase Price</td><td class="amt" id="b-purchase">$0</td></tr>
@@ -770,6 +768,7 @@
       <tr><td>Cash-on-Cash ROI</td><td class="amt" id="b-roi">0%</td></tr>
       <tr><td>Annualized ROI</td><td class="amt" id="b-aroi">0%</td></tr>
     </table>
+    </div>
     <div class="field-row" style="margin-top:18px;">
       <div class="field narrow"><label>Target Annualized ROI %</label><input type="number" id="targetRoi" value="20" min="0"></div>
       <div class="field" style="flex:2;"><span class="hint" style="margin-top:22px;" id="verdictExplain"></span></div>
