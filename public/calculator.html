@@ -268,9 +268,24 @@
     table input{font-size:12px;padding:5px 4px;}
 
     .mao-box{gap:12px;}
-    .breakdown td{font-size:12.5px;}
     .param-grid{grid-template-columns:1fr 1fr;}
     .admin-row{flex-direction:column;align-items:flex-start;}
+
+    /* Toggle: keep switch on its own line if text wraps */
+    .toggle-row{flex-wrap:wrap;gap:8px;}
+    .toggle-row .switch{flex-shrink:0;}
+
+    /* Breakdown table: amounts on their own line under the label */
+    .breakdown{display:block;}
+    .breakdown thead{display:none;}
+    .breakdown tbody, .breakdown tfoot{display:block;}
+    .breakdown tr{display:flex;justify-content:space-between;align-items:baseline;padding:6px 0;border-bottom:1px solid #ece7da;flex-wrap:wrap;gap:4px;}
+    .breakdown tr.section-label{border-bottom:none;padding-top:12px;}
+    .breakdown td{display:inline;padding:0;border:none;font-size:13px;}
+    .breakdown td.amt{white-space:nowrap;font-weight:600;color:var(--navy);margin-left:auto;padding-left:12px;}
+    .breakdown tr.total{border-top:2px solid var(--navy);}
+    .breakdown tr.profit td{font-size:14px;font-weight:700;}
+    .breakdown tr.profit td.amt.neg{color:var(--red);}
 
     footer{padding:0 14px 40px;}
   }
