@@ -219,6 +219,37 @@ export async function GET(request) {
 
       const isLastAttempt = attempt === attempts[attempts.length - 1];
       if (built.length >= limit || isLastAttempt) {
+        // If we still don't have enough verified comps on the last attempt,
+        // fill remaining slots from the AVM pool directly (using the AVM's own
+        // price data). These are marked verified:false so the UI can show a
+        // different badge. This handles markets where county recording lags
+        // significantly behind MLS closings.
+        if (isLastAttempt && built.length < limit) {
+          const usedAddrs = new Set(built.map((b) => b.address));
+          for (const c of sorted) {
+            if (built.length >= limit) break;
+            const addr = addressOf(c);
+            if (usedAddrs.has(addr)) continue;
+            const price = c.price ?? null;
+            const sqft = c.squareFootage ?? null;
+            if (!price || !sqft) continue;
+            if (built.some((b) => b.price === price && b.sqft === sqft)) continue;
+            built.push({
+              address: addr,
+              distance: c.distance != null ? Number(Number(c.distance).toFixed(2)) : null,
+              beds: c.bedrooms ?? null,
+              baths: c.bathrooms ?? null,
+              sqft,
+              price,
+              pricePerSqft: price / sqft,
+              lotSize: c.lotSize ?? null,
+              yearBuilt: c.yearBuilt ?? null,
+              soldDate: c.lastSaleDate ?? null,
+              verified: false,
+              correlation: c.correlation ?? null,
+            });
+          }
+        }
         verifiedComps = built;
         rawEligibleCount = eligible.length;
         usedAttempt = attempt;
