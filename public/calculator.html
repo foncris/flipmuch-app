@@ -230,6 +230,49 @@
   footer{
     max-width:1180px;margin:0 auto;padding:0 28px 50px;font-size:11.5px;color:var(--muted);
   }
+  /* ── Mobile responsive ──────────────────────────────── */
+  @media (max-width:600px){
+    header{padding:14px 16px;gap:10px;}
+    .wordmark .brandname{font-size:22px;}
+    header h1{font-size:15px;}
+    header p{font-size:11px;}
+
+    .summary-bar{
+      padding:10px 14px;
+      gap:10px 16px;
+      overflow-x:auto;
+      flex-wrap:nowrap;
+      -webkit-overflow-scrolling:touch;
+    }
+    .verdict-badge{font-size:12px;padding:6px 10px;flex-shrink:0;}
+    .metric{min-width:70px;flex-shrink:0;}
+    .metric .lbl{font-size:9.5px;}
+    .metric .val{font-size:14px;}
+
+    main{padding:14px 12px 50px;}
+    .grid{grid-template-columns:1fr;}
+    .card{padding:14px 14px;}
+    .card h2{font-size:14px;}
+
+    .field-row{gap:10px;}
+    .field{flex:1 1 140px;}
+    .field.narrow{flex:0 0 90px;}
+    input[type=text], input[type=number], select{font-size:16px;} /* prevent iOS zoom */
+
+    /* Comps table: scroll horizontally */
+    .comp-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+    table{min-width:560px;}
+    table th, table td{padding:5px 4px;font-size:12px;}
+    table input{font-size:12px;padding:5px 4px;}
+
+    .mao-box{gap:12px;}
+    .breakdown td{font-size:12.5px;}
+    .param-grid{grid-template-columns:1fr 1fr;}
+    .admin-row{flex-direction:column;align-items:flex-start;}
+
+    footer{padding:0 14px 40px;}
+  }
+
   @media print{
     .summary-bar{position:static;}
     .actions, .inline-btn, .rm-btn{display:none !important;}
@@ -300,6 +343,7 @@
       <button class="inline-btn gold" id="findCompsBtn" type="button">🔍 Find Sold Comps</button>
       <span class="muted" id="compsStatus" style="margin-left:10px;font-size:13px;"></span>
     </div>
+    <div class="comp-table-wrap">
     <table>
       <thead>
         <tr><th style="width:26%">Address</th><th>Distance (mi)</th><th>Beds</th><th>Baths</th><th>Sq. Ft.</th><th>Sale Price</th><th>$ / Sq.Ft.</th><th></th></tr>
@@ -314,6 +358,7 @@
         </tr>
       </tfoot>
     </table>
+    </div>
     <div class="actions" style="margin-top:12px;">
       <button class="inline-btn" id="addCompBtn" type="button">+ Add Comp</button>
     </div>
