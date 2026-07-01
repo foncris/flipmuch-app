@@ -13,6 +13,20 @@ export default function CalculatorApp({ deals: initialDeals }) {
   const [dealName, setDealName] = useState("Untitled deal");
   const [status, setStatus] = useState("");
   const [iframeKey, setIframeKey] = useState(0);
+  const [compUsage, setCompUsage] = useState({ used: 0, limit: 10 });
+
+  // Fetch (or refresh) this user's comp pull count for the current month.
+  const refreshUsage = useCallback(async () => {
+    const month = new Date().toISOString().slice(0, 7);
+    const { data } = await supabase
+      .from("comp_usage")
+      .select("pull_count")
+      .eq("month", month)
+      .single();
+    setCompUsage({ used: data?.pull_count ?? 0, limit: 10 });
+  }, [supabase]);
+
+  useEffect(() => { refreshUsage(); }, [refreshUsage]);
 
   // Push the global Program Parameters into the iframe once it announces ready.
   const pushParams = useCallback(async () => {
@@ -35,6 +49,10 @@ export default function CalculatorApp({ deals: initialDeals }) {
       if (msg.type === "flipmuch:ready") {
         setReady(true);
         pushParams();
+      } else if (msg.type === "flipmuch:comp-searched" && msg.usage) {
+        // iframe finished a comp search — update the topbar badge immediately
+        // using the count the server returned rather than re-fetching.
+        setCompUsage({ used: msg.usage.pullsThisMonth, limit: msg.usage.freeLimit });
       } else if (msg.type === "flipmuch:deal-data" && pendingExport.current) {
         if (msg.requestId === pendingExport.current.requestId) {
           pendingExport.current.resolve(msg.data);
@@ -179,7 +197,35 @@ export default function CalculatorApp({ deals: initialDeals }) {
         <div className="calc-main">
           <div className="calc-topbar">
             <strong style={{ color: "var(--navy)", fontSize: 15 }}>{dealName}</strong>
-            <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+            <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+              {/* Monthly comp-pull usage badge */}
+              <span
+                title={`${compUsage.used} of ${compUsage.limit} comparable searches used this month. Additional pulls beyond ${compUsage.limit}/month are billed at your plan's overage rate.`}
+                style={{
+                  fontSize: 12,
+                  padding: "3px 9px",
+                  borderRadius: 4,
+                  whiteSpace: "nowrap",
+                  background: compUsage.used >= compUsage.limit
+                    ? "var(--red-bg, #fbe9e7)"
+                    : compUsage.used >= compUsage.limit - 2
+                    ? "var(--amber-bg, #fbf1dc)"
+                    : "var(--cream, #f7f4ee)",
+                  color: compUsage.used >= compUsage.limit
+                    ? "var(--red, #a8302b)"
+                    : compUsage.used >= compUsage.limit - 2
+                    ? "var(--amber, #9a6b0a)"
+                    : "var(--muted, #73706a)",
+                  border: "1px solid",
+                  borderColor: compUsage.used >= compUsage.limit
+                    ? "#f5c0b0"
+                    : compUsage.used >= compUsage.limit - 2
+                    ? "#f0c96a"
+                    : "var(--line, #dcd6c9)",
+                }}
+              >
+                🔍 {compUsage.used}/{compUsage.limit} comp pulls
+              </span>
               <span className="muted" style={{ fontSize: 13 }}>{status}</span>
               <button className="btn primary" onClick={handleSave} disabled={!ready}>Save deal</button>
             </div>

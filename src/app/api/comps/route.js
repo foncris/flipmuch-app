@@ -5,6 +5,10 @@ const RENTCAST_AVM_BASE = "https://api.rentcast.io/v1/avm/value";
 const RENTCAST_RECORDS_BASE = "https://api.rentcast.io/v1/properties";
 const DEFAULT_COMP_LIMIT = 3;
 const MAX_COMP_LIMIT = 10;
+// Number of comp pulls included in every subscription plan per calendar month.
+// Pulls 1–FREE_COMP_PULLS cost nothing extra; beyond this the user is warned
+// in the UI that the pull is billed at their plan's overage rate.
+const FREE_COMP_PULLS = 10;
 // Hard cap on Property Records lookups per request across ALL escalation
 // stages combined. In the best case (first `limit` candidates are all
 // confirmed sold) we make exactly `limit` calls; this cap protects against
@@ -98,6 +102,18 @@ export async function GET(request) {
       { status: 500 }
     );
   }
+
+  // ── Usage tracking ─────────────────────────────────────────────────────────
+  // Read the user's pull count for the current calendar month BEFORE running
+  // the search, so we can include accurate usage info in the response.
+  const currentMonth = new Date().toISOString().slice(0, 7); // 'YYYY-MM'
+  const { data: usageRow } = await supabase
+    .from("comp_usage")
+    .select("pull_count")
+    .eq("user_id", user.id)
+    .eq("month", currentMonth)
+    .single();
+  const pullsBefore = usageRow?.pull_count ?? 0;
 
   const { searchParams } = new URL(request.url);
   const address = searchParams.get("address")?.trim();
@@ -296,6 +312,18 @@ export async function GET(request) {
     .slice(0, limit)
     .map(({ similarityScore, ...c }) => c);
 
+  // ── Increment usage counter ────────────────────────────────────────────────
+  // Upsert: if no row exists for this month, create it with count=1.
+  // If a row exists, increment by 1. This is done AFTER the search succeeds
+  // so a failed lookup doesn't count against the user's monthly quota.
+  const newPullCount = pullsBefore + 1;
+  await supabase.from("comp_usage").upsert(
+    { user_id: user.id, month: currentMonth, pull_count: newPullCount },
+    { onConflict: "user_id,month" }
+  );
+
+  const isPaidPull = newPullCount > FREE_COMP_PULLS;
+
   return NextResponse.json({
     comps: finalComps,
     suggestedArv:
@@ -311,5 +339,12 @@ export async function GET(request) {
     verifiedCount: finalComps.length,
     requestedLimit: limit,
     apiCallsUsed: verificationCount + (usedAttempt ? attempts.indexOf(usedAttempt) + 1 : 0),
+    // Usage info so the UI can show the user their monthly pull count.
+    usage: {
+      pullsThisMonth: newPullCount,
+      freeLimit: FREE_COMP_PULLS,
+      isPaidPull,             // true if this pull exceeded the free quota
+      remaining: Math.max(0, FREE_COMP_PULLS - newPullCount),
+    },
   });
 }
