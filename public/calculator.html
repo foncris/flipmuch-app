@@ -22,12 +22,14 @@
     --red-bg:#fbe9e7;
   }
   *{box-sizing:border-box;}
-  body{
+  html, body{
     margin:0;
     font-family:"Helvetica Neue", Arial, sans-serif;
     background:var(--cream);
     color:var(--ink);
     line-height:1.4;
+    overflow-x:hidden; /* prevent sideways scroll on mobile */
+    max-width:100%;
   }
   header{
     background:var(--navy);

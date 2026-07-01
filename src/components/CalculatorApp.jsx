@@ -136,18 +136,18 @@ export default function CalculatorApp({ deals: initialDeals }) {
       <style>{`
         .calc-layout{display:flex;gap:24px;align-items:flex-start;padding:20px 24px 0;}
         .calc-sidebar{width:240px;flex-shrink:0;}
-        .calc-main{flex:1;min-width:0;}
+        .calc-main{flex:1;min-width:0;overflow:hidden;}
         .calc-topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
         .sidebar-toggle{display:none;}
-        .calc-iframe{width:100%;height:calc(100vh - 220px);border:1px solid var(--line);border-radius:8px;background:#fff;}
+        .calc-iframe{width:100%;height:calc(100vh - 220px);border:1px solid var(--line);border-radius:8px;background:#fff;display:block;overflow:hidden;}
         @media(max-width:640px){
-          .calc-layout{flex-direction:column;padding:10px 12px 0;gap:0;}
-          .calc-sidebar{width:100%;border-bottom:1px solid var(--line);margin-bottom:10px;}
+          .calc-layout{flex-direction:column;padding:6px 0 0;gap:0;}
+          .calc-sidebar{width:100%;border-bottom:1px solid var(--line);margin-bottom:8px;padding:0 12px;box-sizing:border-box;}
           .sidebar-toggle{display:flex;align-items:center;justify-content:space-between;width:100%;background:none;border:none;padding:10px 0;font-size:14px;font-weight:600;color:var(--navy);cursor:pointer;}
           .sidebar-deals{display:none;}
           .sidebar-deals.open{display:block;padding-bottom:10px;}
-          .calc-topbar{flex-wrap:wrap;gap:8px;}
-          .calc-iframe{height:calc(100vh - 160px);border-radius:4px;}
+          .calc-topbar{flex-wrap:wrap;gap:8px;padding:0 12px;box-sizing:border-box;}
+          .calc-iframe{height:calc(100vh - 140px);border-radius:0;border-left:none;border-right:none;width:100vw;max-width:100vw;}
         }
         @media(min-width:641px){
           .sidebar-toggle{display:none!important;}
