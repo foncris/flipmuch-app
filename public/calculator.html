@@ -459,50 +459,64 @@
     </div>
 
     <div class="card">
-      <h2><span class="num">4</span> Inspection, Appraisal, Closing &amp; Sale-Prep Fees</h2>
-      <div class="field-row">
-        <div class="field">
-          <label>Home Inspection Fee</label>
-          <input type="number" id="inspectionFee" value="325" min="0">
-          <span class="hint" id="inspectionHint"></span>
-        </div>
-        <div class="field" style="flex:0 0 auto;align-self:flex-end;">
-          <button class="inline-btn" id="estInspectionBtn" type="button">Estimate from features</button>
-        </div>
+      <!-- Section 4 header with summary + gear toggle -->
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:4px;">
+        <h2 style="margin:0;"><span class="num">4</span> Fees &amp; Closing Costs</h2>
+        <button type="button" id="feesToggleBtn" style="display:flex;align-items:center;gap:6px;background:none;border:1px solid var(--line);border-radius:5px;padding:5px 12px;font-size:12.5px;color:var(--muted);cursor:pointer;">
+          ⚙️ <span id="feesToggleLabel">Edit fees</span>
+        </button>
       </div>
-      <div class="field-row">
-        <div class="field">
-          <label>Appraisal Fee</label>
-          <input type="number" id="appraisalFee" value="450" min="0">
-          <span class="hint" id="appraisalHint"></span>
-        </div>
-        <div class="field" style="flex:0 0 auto;align-self:flex-end;">
-          <button class="inline-btn" id="estAppraisalBtn" type="button">Estimate from features</button>
-        </div>
+      <!-- Summary line (visible when collapsed) -->
+      <div id="feesSummaryLine" style="font-size:13px;color:var(--muted);margin-bottom:4px;line-height:1.6;">
+        Inspection <strong id="sumInspection">$325</strong> · Appraisal <strong id="sumAppraisal">$450</strong> · Realtor sale <strong id="sumRealtor">6%</strong> · Closing <strong id="sumClosing">2.5%</strong>
       </div>
-      <div class="field-row">
-        <div class="field narrow"><label>Realtor Fee — Purchase %</label><input type="number" id="realtorPurchasePct" value="0" min="0" step="0.1"></div>
-        <div class="field narrow"><label>Realtor Fee — Sale %</label><input type="number" id="realtorSalePct" value="6" min="0" step="0.1"></div>
-        <div class="field narrow"><label>Purchase Closing %</label><input type="number" id="purchaseClosingPct" value="1.5" min="0" step="0.1"></div>
-        <div class="field narrow"><label>Sale Closing %</label><input type="number" id="saleClosingPct" value="1" min="0" step="0.1"></div>
-      </div>
-      <p class="hint">Purchase % applies to Purchase Price; Sale % and Sale Closing % apply to ARV. Estimates are editable — confirm with your inspector, appraiser and agent.</p>
 
-      <div class="field-row" style="margin-top:4px;">
-        <div class="field narrow"><label>Title Insurance — Purchase</label><input type="number" id="titleInsPurchase" value="0" min="0"></div>
-        <div class="field narrow"><label>Title Insurance — Sale</label><input type="number" id="titleInsSale" value="0" min="0"></div>
-        <div class="field narrow"><label>Transfer/Recording Tax %</label><input type="number" id="transferTaxPct" value="0" min="0" step="0.1"></div>
-        <div class="field narrow"><label>Survey Fee</label><input type="number" id="surveyFee" value="0" min="0"></div>
-        <div class="field narrow"><label>Escrow Fee</label><input type="number" id="escrowFee" value="0" min="0"></div>
-      </div>
-      <p class="hint">Transfer/Recording Tax % applies to Purchase Price. These are typically due at purchase or sale closing — confirm exact amounts with your title company for your county.</p>
+      <!-- Hidden fee fields panel -->
+      <div id="feesPanel" style="display:none;margin-top:10px;">
+        <div class="field-row">
+          <div class="field">
+            <label>Home Inspection Fee</label>
+            <input type="number" id="inspectionFee" value="325" min="0">
+            <span class="hint" id="inspectionHint"></span>
+          </div>
+          <div class="field" style="flex:0 0 auto;align-self:flex-end;">
+            <button class="inline-btn" id="estInspectionBtn" type="button">Estimate from features</button>
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label>Appraisal Fee</label>
+            <input type="number" id="appraisalFee" value="450" min="0">
+            <span class="hint" id="appraisalHint"></span>
+          </div>
+          <div class="field" style="flex:0 0 auto;align-self:flex-end;">
+            <button class="inline-btn" id="estAppraisalBtn" type="button">Estimate from features</button>
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field narrow"><label>Realtor Fee — Purchase %</label><input type="number" id="realtorPurchasePct" value="0" min="0" step="0.1"></div>
+          <div class="field narrow"><label>Realtor Fee — Sale %</label><input type="number" id="realtorSalePct" value="6" min="0" step="0.1"></div>
+          <div class="field narrow"><label>Purchase Closing %</label><input type="number" id="purchaseClosingPct" value="1.5" min="0" step="0.1"></div>
+          <div class="field narrow"><label>Sale Closing %</label><input type="number" id="saleClosingPct" value="1" min="0" step="0.1"></div>
+        </div>
+        <p class="hint">Purchase % applies to Purchase Price; Sale % and Sale Closing % apply to ARV.</p>
 
-      <div class="field-row" style="margin-top:10px;">
-        <div class="field narrow"><label>Staging Cost</label><input type="number" id="stagingCost" value="0" min="0"></div>
-        <div class="field narrow"><label>MLS / Marketing Fee</label><input type="number" id="marketingFee" value="0" min="0"></div>
-        <div class="field narrow"><label>Buyer Concession % of ARV</label><input type="number" id="buyerConcessionPct" value="0" min="0" step="0.1"></div>
+        <div class="field-row" style="margin-top:4px;">
+          <div class="field narrow"><label>Title Insurance — Purchase</label><input type="number" id="titleInsPurchase" value="0" min="0"></div>
+          <div class="field narrow"><label>Title Insurance — Sale</label><input type="number" id="titleInsSale" value="0" min="0"></div>
+          <div class="field narrow"><label>Transfer/Recording Tax %</label><input type="number" id="transferTaxPct" value="0" min="0" step="0.1"></div>
+          <div class="field narrow"><label>Survey Fee</label><input type="number" id="surveyFee" value="0" min="0"></div>
+          <div class="field narrow"><label>Escrow Fee</label><input type="number" id="escrowFee" value="0" min="0"></div>
+        </div>
+        <p class="hint">Transfer/Recording Tax % applies to Purchase Price. Confirm exact amounts with your title company.</p>
+
+        <div class="field-row" style="margin-top:10px;">
+          <div class="field narrow"><label>Staging Cost</label><input type="number" id="stagingCost" value="0" min="0"></div>
+          <div class="field narrow"><label>MLS / Marketing Fee</label><input type="number" id="marketingFee" value="0" min="0"></div>
+          <div class="field narrow"><label>Buyer Concession % of ARV</label><input type="number" id="buyerConcessionPct" value="0" min="0" step="0.1"></div>
+        </div>
+        <p class="hint">Staging, marketing, and buyer closing-cost concessions — all added to total project cost.</p>
       </div>
-      <p class="hint">Staging, marketing, and any buyer closing-cost concession you offer to move the sale — all added to total project cost.</p>
     </div>
 
     <div class="card">
@@ -1129,6 +1143,37 @@ $('addCompBtn').addEventListener('click', ()=>addCompRow());
    ambiguous what the search was based on. */
 const findCompsBtn = $('findCompsBtn');
 const compsStatusEl = $('compsStatus');
+
+/* Fees panel toggle */
+(function(){
+  const btn = $('feesToggleBtn');
+  const panel = $('feesPanel');
+  const lbl = $('feesToggleLabel');
+  if(!btn) return;
+  btn.addEventListener('click', () => {
+    const open = panel.style.display !== 'none';
+    panel.style.display = open ? 'none' : 'block';
+    lbl.textContent = open ? 'Edit fees' : 'Close';
+    btn.style.color = open ? 'var(--muted)' : 'var(--navy)';
+    btn.style.borderColor = open ? 'var(--line)' : 'var(--navy)';
+  });
+  // Keep the summary line updated whenever fee inputs change
+  function updateFeesSummary(){
+    const insp = num('inspectionFee');
+    const appr = num('appraisalFee');
+    const rSale = num('realtorSalePct');
+    const pClose = num('purchaseClosingPct');
+    const sClose = num('saleClosingPct');
+    const el = $('sumInspection'); if(el) el.textContent = '$'+Math.round(insp).toLocaleString();
+    const el2 = $('sumAppraisal'); if(el2) el2.textContent = '$'+Math.round(appr).toLocaleString();
+    const el3 = $('sumRealtor'); if(el3) el3.textContent = rSale+'%';
+    const el4 = $('sumClosing'); if(el4) el4.textContent = (pClose+sClose).toFixed(1)+'%';
+  }
+  ['inspectionFee','appraisalFee','realtorSalePct','purchaseClosingPct','saleClosingPct'].forEach(id=>{
+    const el = $(id); if(el) el.addEventListener('input', updateFeesSummary);
+  });
+  updateFeesSummary();
+})();
 
 /* Search options + how-it-works toggles */
 $('searchOptsToggle').addEventListener('click', () => {
