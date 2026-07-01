@@ -129,69 +129,62 @@ export default function CalculatorApp({ deals: initialDeals }) {
     setIframeKey((k) => k + 1); // remount iframe to reset all fields
   }
 
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
   return (
-    <main className="container" style={{ maxWidth: 1300 }}>
-      <div style={{ display: "flex", gap: 24, alignItems: "flex-start" }}>
-        <aside className="card" style={{ width: 240, flexShrink: 0, padding: 16 }}>
-          <button className="btn primary" style={{ width: "100%", marginBottom: 12 }} onClick={handleNew}>
-            + New deal
+    <main className="container" style={{ maxWidth: 1300, padding: "0 0 40px" }}>
+      <style>{`
+        .calc-layout{display:flex;gap:24px;align-items:flex-start;padding:20px 24px 0;}
+        .calc-sidebar{width:240px;flex-shrink:0;}
+        .calc-main{flex:1;min-width:0;}
+        .calc-topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
+        .sidebar-toggle{display:none;}
+        .calc-iframe{width:100%;height:calc(100vh - 220px);border:1px solid var(--line);border-radius:8px;background:#fff;}
+        @media(max-width:640px){
+          .calc-layout{flex-direction:column;padding:10px 12px 0;gap:0;}
+          .calc-sidebar{width:100%;border-bottom:1px solid var(--line);margin-bottom:10px;}
+          .sidebar-toggle{display:flex;align-items:center;justify-content:space-between;width:100%;background:none;border:none;padding:10px 0;font-size:14px;font-weight:600;color:var(--navy);cursor:pointer;}
+          .sidebar-deals{display:none;}
+          .sidebar-deals.open{display:block;padding-bottom:10px;}
+          .calc-topbar{flex-wrap:wrap;gap:8px;}
+          .calc-iframe{height:calc(100vh - 160px);border-radius:4px;}
+        }
+        @media(min-width:641px){
+          .sidebar-toggle{display:none!important;}
+          .sidebar-deals{display:block!important;}
+        }
+      `}</style>
+
+      <div className="calc-layout">
+        <aside className="card calc-sidebar" style={{ padding: 16 }}>
+          <button className="sidebar-toggle" onClick={() => setSidebarOpen(o => !o)}>
+            <span>☰ Deals</span>
+            <span style={{ fontSize: 12, color: "var(--muted)" }}>{sidebarOpen ? "▲ close" : "▼ open"}</span>
           </button>
-          <div className="muted" style={{ fontSize: 12, textTransform: "uppercase", marginBottom: 6 }}>
-            Saved deals
+          <div className={`sidebar-deals${sidebarOpen ? " open" : ""}`}>
+            <button className="btn primary" style={{ width: "100%", marginBottom: 12 }} onClick={() => { handleNew(); setSidebarOpen(false); }}>
+              + New deal
+            </button>
+            <div className="muted" style={{ fontSize: 12, textTransform: "uppercase", marginBottom: 6 }}>Saved deals</div>
+            {deals.length === 0 && <p className="muted" style={{ fontSize: 13 }}>No saved deals yet.</p>}
+            {deals.map((d) => (
+              <div key={d.id} style={{ padding: "8px 6px", borderRadius: 5, marginBottom: 4, background: d.id === activeDealId ? "var(--cream)" : "transparent", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 6 }}>
+                <button onClick={() => { handleLoad(d); setSidebarOpen(false); }} style={{ background: "none", border: "none", padding: 0, textAlign: "left", cursor: "pointer", fontSize: 13.5, color: "var(--navy)", flex: 1 }} title={d.name}>{d.name}</button>
+                <button onClick={() => handleDelete(d)} title="Delete" style={{ background: "none", border: "none", color: "var(--red)", cursor: "pointer", fontSize: 13 }}>✕</button>
+              </div>
+            ))}
           </div>
-          {deals.length === 0 && <p className="muted" style={{ fontSize: 13 }}>No saved deals yet.</p>}
-          {deals.map((d) => (
-            <div
-              key={d.id}
-              style={{
-                padding: "8px 6px",
-                borderRadius: 5,
-                marginBottom: 4,
-                background: d.id === activeDealId ? "var(--cream)" : "transparent",
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                gap: 6,
-              }}
-            >
-              <button
-                onClick={() => handleLoad(d)}
-                style={{
-                  background: "none", border: "none", padding: 0, textAlign: "left",
-                  cursor: "pointer", fontSize: 13.5, color: "var(--navy)", flex: 1,
-                }}
-                title={d.name}
-              >
-                {d.name}
-              </button>
-              <button
-                onClick={() => handleDelete(d)}
-                title="Delete"
-                style={{ background: "none", border: "none", color: "var(--red)", cursor: "pointer", fontSize: 13 }}
-              >
-                ✕
-              </button>
-            </div>
-          ))}
         </aside>
 
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-            <strong style={{ color: "var(--navy)" }}>{dealName}</strong>
+        <div className="calc-main">
+          <div className="calc-topbar">
+            <strong style={{ color: "var(--navy)", fontSize: 15 }}>{dealName}</strong>
             <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
               <span className="muted" style={{ fontSize: 13 }}>{status}</span>
-              <button className="btn primary" onClick={handleSave} disabled={!ready}>
-                Save deal
-              </button>
+              <button className="btn primary" onClick={handleSave} disabled={!ready}>Save deal</button>
             </div>
           </div>
-          <iframe
-            key={iframeKey}
-            ref={iframeRef}
-            src="/calculator.html"
-            title="Fix & Flip Deal Analyzer"
-            style={{ width: "100%", height: "calc(100vh - 220px)", border: "1px solid var(--line)", borderRadius: 8, background: "#fff" }}
-          />
+          <iframe key={iframeKey} ref={iframeRef} src="/calculator.html" title="Fix & Flip Deal Analyzer" className="calc-iframe" />
         </div>
       </div>
     </main>
