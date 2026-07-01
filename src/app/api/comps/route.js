@@ -182,11 +182,18 @@ export async function GET(request) {
     try {
       const data = await fetchRentCastComps({ address, propertyType, maxRadius: attempt.maxRadius });
       const comps = data?.comparables || [];
+      // For verified pass: exclude Active listings (they haven't closed yet)
       const eligible = comps.filter((c) => isSameType(c) && isOffMarket(c));
+      // For AVM fallback: use all same-type candidates — recently closed sales
+      // often still show as "Active" in RentCast's status field due to MLS lag,
+      // but RentCast already includes them as AVM comparables (meaning it knows
+      // they sold). Relying on status here would block the most recent comps.
+      const allSameType = comps.filter((c) => isSameType(c));
 
       // Sort by spec-similarity BEFORE verifying so we call Property Records
       // on the most-likely-to-qualify candidates first and stop early.
       const sorted = eligible.slice().sort((a, b) => quickScore(a) - quickScore(b));
+      const sortedAll = allSameType.slice().sort((a, b) => quickScore(a) - quickScore(b));
 
       const built = [];
       for (const c of sorted) {
@@ -226,7 +233,7 @@ export async function GET(request) {
         // significantly behind MLS closings.
         if (isLastAttempt && built.length < limit) {
           const usedAddrs = new Set(built.map((b) => b.address));
-          for (const c of sorted) {
+          for (const c of sortedAll) {
             if (built.length >= limit) break;
             const addr = addressOf(c);
             if (usedAddrs.has(addr)) continue;
