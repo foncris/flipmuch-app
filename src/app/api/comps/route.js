@@ -134,6 +134,12 @@ export async function GET(request) {
     ? Math.min(Math.round(requestedLimit), MAX_COMP_LIMIT)
     : DEFAULT_COMP_LIMIT;
 
+  // Optional overrides from the "Search options" panel in the UI.
+  // When provided, we collapse the escalation ladder to a single locked attempt
+  // instead of widening automatically.
+  const overrideRadius = searchParams.get("maxRadius") ? Number(searchParams.get("maxRadius")) : null;
+  const overrideDays   = searchParams.get("maxDaysOld") ? Number(searchParams.get("maxDaysOld")) : null;
+
   function isSameType(c) {
     if (!subjectType) return true;
     const fieldType = normalizePropertyType(c.propertyType);
@@ -166,13 +172,16 @@ export async function GET(request) {
   // Escalation ladder: tight + recent first, widen radius/recency until we
   // have `limit` confirmed sales. Max seasoning is 12 months — beyond that
   // the comps are too stale to be reliable for underwriting.
-  const attempts = [
-    { maxRadius: 1.5, daysOld: 90  },
-    { maxRadius: 1.5, daysOld: 180 },
-    { maxRadius: 2,   daysOld: 180 },
-    { maxRadius: 2,   daysOld: 365 },
-    { maxRadius: 3,   daysOld: 365 },
-  ];
+  // When the user sets an override in Search Options, collapse to one attempt.
+  const attempts = (overrideRadius || overrideDays)
+    ? [{ maxRadius: overrideRadius ?? 3, daysOld: overrideDays ?? 365 }]
+    : [
+        { maxRadius: 1.5, daysOld: 90  },
+        { maxRadius: 1.5, daysOld: 180 },
+        { maxRadius: 2,   daysOld: 180 },
+        { maxRadius: 2,   daysOld: 365 },
+        { maxRadius: 3,   daysOld: 365 },
+      ];
 
   // Cache Property Records lookups across all escalation stages — if a
   // candidate appears again in a wider search, we reuse the cached record

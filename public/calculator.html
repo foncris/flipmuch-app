@@ -344,12 +344,57 @@
   </div>
 
   <div class="card full">
-    <h2><span class="num">2</span> Sales Comparables</h2>
-    <p class="sub"><strong>Manual search only</strong> — this never runs automatically. Before clicking, confirm the Sq. Ft., Beds, Baths, and Year Built fields in Subject Property above actually describe this property (not just whatever was left in those fields); the search matches comps against those exact values, so stale or default numbers will pull the wrong comps without any warning other than what you set. Once you click, it finds the 3 comps that most closely match the subject's property type, square footage, beds and baths, within 1.5–2 miles — prioritizing closed sales in the last 90 days, then widening to 6 and up to 12 months across a 1.5–3 mile radius until 3 confirmed sales are found. Every candidate must clear two gates: (1) it can't be a currently active listing, and (2) it must have an actual county-recorded deed sale (<span class="sale-badge verified">SOLD</span> badge, with the closing date) inside that time window — properties that are pending, under contract, accepting backup offers, withdrawn, or expired without selling all fail gate 2 and are dropped. In thin markets the search will reach back up to 12 months to hit 3 comps; the status message shows exactly how far it reached. Among qualifying comps, ones biased toward recently remodeled/updated resales — using price/sq.ft. above the local comp pool's median as the proxy (<span class="renovated-dot"></span> rows below) — are favored slightly, since that better reflects a fix-and-flip's post-renovation condition. Always confirm condition and lot size against MLS photos / your own walkthrough before relying on these.</p>
-    <div class="actions" style="margin-bottom:6px;">
+    <h2 style="margin-bottom:10px;"><span class="num">2</span> Sales Comparables</h2>
+
+    <!-- Primary action row -->
+    <div style="display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:8px;">
       <button class="inline-btn gold" id="findCompsBtn" type="button">🔍 Find Sold Comps</button>
-      <span class="muted" id="compsStatus" style="margin-left:10px;font-size:13px;"></span>
+      <button type="button" id="searchOptsToggle" style="background:none;border:1px solid var(--line);border-radius:5px;padding:5px 11px;font-size:12.5px;color:var(--muted);cursor:pointer;">⚙️ Search options</button>
+      <button type="button" id="howCompsToggle" style="background:none;border:none;padding:4px 6px;font-size:12.5px;color:var(--muted);cursor:pointer;text-decoration:underline dotted;">ℹ️ How this works</button>
+      <span class="muted" id="compsStatus" style="font-size:13px;flex:1;min-width:0;"></span>
     </div>
+
+    <!-- Search options panel (hidden by default) -->
+    <div id="searchOptsPanel" style="display:none;background:var(--cream);border:1px solid var(--line);border-radius:6px;padding:14px 16px;margin-bottom:12px;">
+      <div style="font-size:11.5px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin-bottom:10px;font-weight:600;">Search Options</div>
+      <div style="display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end;">
+        <div class="field" style="min-width:120px;">
+          <label style="font-size:12px;">Comps to find</label>
+          <select id="optCompCount" style="width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:4px;font-size:13px;background:var(--paper);">
+            <option value="3" selected>3 (default)</option>
+            <option value="4">4</option>
+            <option value="5">5</option>
+          </select>
+        </div>
+        <div class="field" style="min-width:140px;">
+          <label style="font-size:12px;">Max search radius</label>
+          <select id="optRadius" style="width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:4px;font-size:13px;background:var(--paper);">
+            <option value="">Auto (1.5–3 mi)</option>
+            <option value="1">1 mi (tight)</option>
+            <option value="2">2 mi</option>
+            <option value="3">3 mi</option>
+          </select>
+        </div>
+        <div class="field" style="min-width:150px;">
+          <label style="font-size:12px;">Max sale age</label>
+          <select id="optDays" style="width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:4px;font-size:13px;background:var(--paper);">
+            <option value="">Auto (3–12 mo)</option>
+            <option value="90">3 months (recent)</option>
+            <option value="180">6 months</option>
+            <option value="365">12 months</option>
+          </select>
+        </div>
+        <p style="font-size:11.5px;color:var(--muted);margin:4px 0 0;width:100%;line-height:1.5;">Auto settings escalate automatically — starts tight and widens only if needed. Override here to lock a specific range.</p>
+      </div>
+    </div>
+
+    <!-- How it works panel (hidden by default) -->
+    <div id="howCompsPanel" style="display:none;background:var(--cream);border:1px solid var(--line);border-radius:6px;padding:14px 16px;margin-bottom:12px;font-size:12.5px;color:var(--ink);line-height:1.65;">
+      <strong>Manual search only</strong> — never runs automatically. Fill in Sq. Ft., Beds, Baths, and Year Built for the subject property first — comps are matched against those exact values.<br><br>
+      The search finds confirmed county-recorded deed sales only (<span class="sale-badge verified" style="font-size:11px;">SOLD</span> badge). Active listings, pending, under contract, withdrawn, and expired properties are excluded. It starts within 1.5 mi / 90 days and widens up to 3 mi / 12 months until it finds enough comps.<br><br>
+      Comps with a higher $/sq.ft. than the local median (<span class="renovated-dot"></span> gold dot) are favored slightly — these likely reflect post-renovation resale values, which is what a flip will sell at. Always verify condition and lot size against MLS before using.
+    </div>
+
     <div id="compUsageBanner" style="display:none;margin-bottom:10px;padding:8px 12px;border-radius:5px;font-size:12.5px;line-height:1.5;"></div>
     <div class="comp-table-wrap">
     <table>
@@ -1084,6 +1129,19 @@ $('addCompBtn').addEventListener('click', ()=>addCompRow());
    ambiguous what the search was based on. */
 const findCompsBtn = $('findCompsBtn');
 const compsStatusEl = $('compsStatus');
+
+/* Search options + how-it-works toggles */
+$('searchOptsToggle').addEventListener('click', () => {
+  const p = $('searchOptsPanel');
+  const open = p.style.display !== 'none';
+  p.style.display = open ? 'none' : 'block';
+  $('searchOptsToggle').style.color = open ? 'var(--muted)' : 'var(--navy)';
+  $('searchOptsToggle').style.borderColor = open ? 'var(--line)' : 'var(--navy)';
+});
+$('howCompsToggle').addEventListener('click', () => {
+  const p = $('howCompsPanel');
+  p.style.display = p.style.display !== 'none' ? 'none' : 'block';
+});
 const compUsageBanner = $('compUsageBanner');
 
 function showUsageBanner(usage){
@@ -1151,6 +1209,10 @@ async function fetchComps(){
 
   try{
     const qs = new URLSearchParams({ address, sqft, beds, baths, propertyType });
+    // Pro search options (only sent when user explicitly overrides the defaults)
+    const optLimit = $('optCompCount')?.value; if(optLimit) qs.set('limit', optLimit);
+    const optRadius = $('optRadius')?.value;   if(optRadius) qs.set('maxRadius', optRadius);
+    const optDays = $('optDays')?.value;       if(optDays) qs.set('maxDaysOld', optDays);
     const res = await fetch('/api/comps?' + qs.toString());
     const json = await res.json();
     if(!res.ok) throw new Error(json.error || 'Comps lookup failed.');
