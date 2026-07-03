@@ -259,23 +259,31 @@
     .field.narrow{flex:0 0 90px;}
     input[type=text], input[type=number], select{font-size:16px;} /* prevent iOS zoom */
 
-    /* Comps table → stacked cards on mobile (iOS-safe reset) */
+    /* Comps table → labeled card layout on mobile */
     .comp-table-wrap{overflow-x:visible;}
     .comp-table-wrap table{display:block;min-width:0;width:100%;}
     .comp-table-wrap thead{display:none;}
     .comp-table-wrap tbody{display:block;}
     .comp-table-wrap tfoot{display:none;}
-    /* Each comp row = flex card */
-    .comp-table-wrap tbody tr{display:flex;flex-wrap:wrap;gap:4px;padding:8px 0;border-bottom:1px solid #e8e3d9;align-items:center;}
-    /* Address: own full row */
-    .comp-table-wrap tbody tr td{display:block;flex:1 1 50px;}
-    .comp-table-wrap tbody tr td:first-child{flex:0 0 100%;}
+    /* Card per comp: two flex rows via wrap */
+    .comp-table-wrap tbody tr{display:flex;flex-wrap:wrap;gap:5px;padding:10px 0 8px;border-bottom:1px solid #e8e3d9;align-items:flex-end;}
+    /* All cells: block so ::before label renders */
+    .comp-table-wrap tbody tr td{display:block;}
+    /* Row 1: address takes remaining width, ✕ sits top-right */
+    .comp-table-wrap tbody tr td:first-child{flex:1 1 0;min-width:0;}
     .comp-table-wrap tbody tr td:first-child input{width:100%!important;box-sizing:border-box;}
-    /* All inputs fill their cell */
-    .comp-table-wrap tbody tr td input{width:100%!important;box-sizing:border-box;min-width:38px;font-size:16px;padding:6px 4px;}
-    /* $/sqft text + remove button: compact */
-    .comp-table-wrap tbody tr td.c-ppsf{flex:0 0 auto;align-self:center;font-size:11px;white-space:nowrap;}
-    .comp-table-wrap tbody tr td:last-child{flex:0 0 auto;}
+    .comp-table-wrap tbody tr td:last-child{flex:0 0 auto;align-self:flex-start;padding-top:2px;}
+    /* Row 2: numeric fields — dist/beds/baths small, sqft/price wider */
+    .comp-table-wrap tbody tr td.td-dist{flex:1 1 42px;}
+    .comp-table-wrap tbody tr td.td-beds{flex:1 1 38px;}
+    .comp-table-wrap tbody tr td.td-baths{flex:1 1 38px;}
+    .comp-table-wrap tbody tr td.td-sqft{flex:2 1 68px;}
+    .comp-table-wrap tbody tr td.td-price{flex:2 1 80px;}
+    .comp-table-wrap tbody tr td.c-ppsf{flex:0 0 auto;align-self:flex-end;font-size:11px;white-space:nowrap;padding-bottom:8px;}
+    /* All inputs fill cell width */
+    .comp-table-wrap tbody tr td input{width:100%!important;box-sizing:border-box;font-size:16px;padding:6px 4px;}
+    /* Label above each numeric field */
+    .comp-table-wrap tbody tr td[data-label]::before{content:attr(data-label);display:block;font-size:9px;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:0.3px;margin-bottom:2px;}
 
     .mao-box{gap:12px;}
     .param-grid{grid-template-columns:1fr 1fr;}
@@ -1127,12 +1135,12 @@ function addCompRow(data){
   }
   tr.innerHTML = `
     <td>${saleBadge}${data.renovated ? '<span class="renovated-dot" title="Likely remodeled/updated"></span> ' : ''}<input type="text" class="c-addr" value="${data.addr||''}" placeholder="456 Oak Ave, City, ST"></td>
-    <td><input type="number" class="c-dist" value="${data.dist||''}" step="0.1" placeholder="mi" style="width:70px;"></td>
-    <td><input type="number" class="c-beds" value="${data.beds||''}" placeholder="bd" style="width:55px;"></td>
-    <td><input type="number" class="c-baths" value="${data.baths||''}" step="0.5" placeholder="ba" style="width:55px;"></td>
-    <td><input type="number" class="c-sqft" value="${data.sqft||''}" placeholder="sqft" style="width:80px;"></td>
-    <td><input type="number" class="c-price" value="${data.price||''}" placeholder="price" style="width:100px;"></td>
-    <td class="c-ppsf" style="font-weight:600;color:var(--navy);">—</td>
+    <td class="td-dist"  data-label="Dist mi"><input type="number" class="c-dist"  value="${data.dist||''}"  step="0.1" style="width:70px;"></td>
+    <td class="td-beds"  data-label="Beds">   <input type="number" class="c-beds"  value="${data.beds||''}"             style="width:55px;"></td>
+    <td class="td-baths" data-label="Baths">  <input type="number" class="c-baths" value="${data.baths||''}" step="0.5" style="width:55px;"></td>
+    <td class="td-sqft"  data-label="Sq.Ft."> <input type="number" class="c-sqft"  value="${data.sqft||''}"             style="width:80px;"></td>
+    <td class="td-price" data-label="Sale Price"><input type="number" class="c-price" value="${data.price||''}"          style="width:100px;"></td>
+    <td class="c-ppsf" data-label="$/sf" style="font-weight:600;color:var(--navy);">—</td>
     <td><button type="button" class="rm-btn" title="Remove comp">✕</button></td>
   `;
   tr.querySelectorAll('input').forEach(i=>i.addEventListener('input', calc));
