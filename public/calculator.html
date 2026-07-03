@@ -259,28 +259,28 @@
     .field.narrow{flex:0 0 90px;}
     input[type=text], input[type=number], select{font-size:16px;} /* prevent iOS zoom */
 
-    /* Comps table → labeled card layout on mobile */
+    /* Comps table → two-row card layout on mobile */
     .comp-table-wrap{overflow-x:visible;}
     .comp-table-wrap table{display:block;min-width:0;width:100%;}
     .comp-table-wrap thead{display:none;}
     .comp-table-wrap tbody{display:block;}
     .comp-table-wrap tfoot{display:none;}
-    /* Card per comp: two flex rows via wrap */
     .comp-table-wrap tbody tr{display:flex;flex-wrap:wrap;gap:5px;padding:10px 0 8px;border-bottom:1px solid #e8e3d9;align-items:flex-end;}
-    /* All cells: block so ::before label renders */
     .comp-table-wrap tbody tr td{display:block;}
-    /* Row 1: address takes remaining width, ✕ sits top-right */
-    .comp-table-wrap tbody tr td:first-child{flex:1 1 0;min-width:0;}
+    /* ── Row 1: address + ✕ ──────────────────────────── */
+    /* Address fills row 1 minus the ✕ button */
+    .comp-table-wrap tbody tr td:first-child{order:1;flex:0 0 calc(100% - 38px);}
     .comp-table-wrap tbody tr td:first-child input{width:100%!important;box-sizing:border-box;}
-    .comp-table-wrap tbody tr td:last-child{flex:0 0 auto;align-self:flex-start;padding-top:2px;}
-    /* Row 2: numeric fields — dist/beds/baths small, sqft/price wider */
-    .comp-table-wrap tbody tr td.td-dist{flex:1 1 42px;}
-    .comp-table-wrap tbody tr td.td-beds{flex:1 1 38px;}
-    .comp-table-wrap tbody tr td.td-baths{flex:1 1 38px;}
-    .comp-table-wrap tbody tr td.td-sqft{flex:2 1 68px;}
-    .comp-table-wrap tbody tr td.td-price{flex:2 1 80px;}
-    .comp-table-wrap tbody tr td.c-ppsf{flex:0 0 auto;align-self:flex-end;font-size:11px;white-space:nowrap;padding-bottom:8px;}
-    /* All inputs fill cell width */
+    /* ✕ button: right end of row 1 */
+    .comp-table-wrap tbody tr td:last-child{order:1;flex:0 0 auto;align-self:center;}
+    /* ── Row 2: labeled numeric fields ──────────────── */
+    .comp-table-wrap tbody tr td.td-dist {order:2;flex:1 1 40px;}
+    .comp-table-wrap tbody tr td.td-beds {order:2;flex:1 1 36px;}
+    .comp-table-wrap tbody tr td.td-baths{order:2;flex:1 1 36px;}
+    .comp-table-wrap tbody tr td.td-sqft {order:2;flex:2 1 68px;}
+    .comp-table-wrap tbody tr td.td-price{order:2;flex:2 1 80px;}
+    .comp-table-wrap tbody tr td.c-ppsf  {order:2;flex:0 0 auto;align-self:flex-end;font-size:11px;white-space:nowrap;padding-bottom:7px;}
+    /* All inputs fill their cell */
     .comp-table-wrap tbody tr td input{width:100%!important;box-sizing:border-box;font-size:16px;padding:6px 4px;}
     /* Label above each numeric field */
     .comp-table-wrap tbody tr td[data-label]::before{content:attr(data-label);display:block;font-size:9px;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:0.3px;margin-bottom:2px;}
