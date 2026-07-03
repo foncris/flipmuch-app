@@ -259,11 +259,26 @@
     .field.narrow{flex:0 0 90px;}
     input[type=text], input[type=number], select{font-size:16px;} /* prevent iOS zoom */
 
-    /* Comps table: scroll horizontally */
-    .comp-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
-    table{min-width:560px;}
-    table th, table td{padding:5px 4px;font-size:12px;}
-    table input{font-size:12px;padding:5px 4px;}
+    /* Comps table → stacked cards on mobile */
+    .comp-table-wrap{overflow-x:visible;}
+    table{min-width:0;width:100%;}
+    /* Hide column headers — layout makes fields self-evident */
+    .comp-table-wrap thead{display:none;}
+    /* Each comp row becomes a flex card */
+    .comp-table-wrap tbody tr{display:flex;flex-wrap:wrap;gap:4px;padding:8px 0;border-bottom:1px solid #e8e3d9;align-items:center;}
+    /* Address: full-width top row */
+    .comp-table-wrap tbody tr td:first-child{flex:0 0 100%;}
+    .comp-table-wrap tbody tr td:first-child input{width:100%!important;box-sizing:border-box;}
+    /* Numeric cells share the second row */
+    .comp-table-wrap tbody tr td{flex:1 1 50px;}
+    .comp-table-wrap tbody tr td input{width:100%!important;box-sizing:border-box;min-width:38px;}
+    /* $/sqft label + remove button stay compact */
+    .comp-table-wrap tbody tr td.c-ppsf{flex:0 0 auto;align-self:center;font-size:11px;}
+    .comp-table-wrap tbody tr td:last-child{flex:0 0 auto;}
+    /* Hide avg/median footer — already shown in mao-box below */
+    .comp-table-wrap tfoot{display:none;}
+    table th, table td{padding:3px 2px;font-size:12px;}
+    table input{font-size:16px;padding:6px 4px;} /* 16px prevents iOS zoom */
 
     .mao-box{gap:12px;}
     .param-grid{grid-template-columns:1fr 1fr;}
@@ -1114,12 +1129,12 @@ function addCompRow(data){
     saleBadge = '<span class="sale-badge unverified" title="Off-market, but the recorded sale price wasn\'t available to confirm (e.g. non-disclosure state) — verify manually">UNCONF.</span> ';
   }
   tr.innerHTML = `
-    <td>${saleBadge}${data.renovated ? '<span class="renovated-dot" title="Likely remodeled/updated"></span> ' : ''}<input type="text" class="c-addr" value="${data.addr||''}" placeholder="456 Oak Ave"></td>
-    <td><input type="number" class="c-dist" value="${data.dist||''}" step="0.1" style="width:70px;"></td>
-    <td><input type="number" class="c-beds" value="${data.beds||''}" style="width:55px;"></td>
-    <td><input type="number" class="c-baths" value="${data.baths||''}" step="0.5" style="width:55px;"></td>
-    <td><input type="number" class="c-sqft" value="${data.sqft||''}" style="width:80px;"></td>
-    <td><input type="number" class="c-price" value="${data.price||''}" style="width:100px;"></td>
+    <td>${saleBadge}${data.renovated ? '<span class="renovated-dot" title="Likely remodeled/updated"></span> ' : ''}<input type="text" class="c-addr" value="${data.addr||''}" placeholder="456 Oak Ave, City, ST"></td>
+    <td><input type="number" class="c-dist" value="${data.dist||''}" step="0.1" placeholder="mi" style="width:70px;"></td>
+    <td><input type="number" class="c-beds" value="${data.beds||''}" placeholder="bd" style="width:55px;"></td>
+    <td><input type="number" class="c-baths" value="${data.baths||''}" step="0.5" placeholder="ba" style="width:55px;"></td>
+    <td><input type="number" class="c-sqft" value="${data.sqft||''}" placeholder="sqft" style="width:80px;"></td>
+    <td><input type="number" class="c-price" value="${data.price||''}" placeholder="price" style="width:100px;"></td>
     <td class="c-ppsf" style="font-weight:600;color:var(--navy);">—</td>
     <td><button type="button" class="rm-btn" title="Remove comp">✕</button></td>
   `;
