@@ -259,26 +259,23 @@
     .field.narrow{flex:0 0 90px;}
     input[type=text], input[type=number], select{font-size:16px;} /* prevent iOS zoom */
 
-    /* Comps table → stacked cards on mobile */
+    /* Comps table → stacked cards on mobile (iOS-safe reset) */
     .comp-table-wrap{overflow-x:visible;}
-    table{min-width:0;width:100%;}
-    /* Hide column headers — layout makes fields self-evident */
+    .comp-table-wrap table{display:block;min-width:0;width:100%;}
     .comp-table-wrap thead{display:none;}
-    /* Each comp row becomes a flex card */
+    .comp-table-wrap tbody{display:block;}
+    .comp-table-wrap tfoot{display:none;}
+    /* Each comp row = flex card */
     .comp-table-wrap tbody tr{display:flex;flex-wrap:wrap;gap:4px;padding:8px 0;border-bottom:1px solid #e8e3d9;align-items:center;}
-    /* Address: full-width top row */
+    /* Address: own full row */
+    .comp-table-wrap tbody tr td{display:block;flex:1 1 50px;}
     .comp-table-wrap tbody tr td:first-child{flex:0 0 100%;}
     .comp-table-wrap tbody tr td:first-child input{width:100%!important;box-sizing:border-box;}
-    /* Numeric cells share the second row */
-    .comp-table-wrap tbody tr td{flex:1 1 50px;}
-    .comp-table-wrap tbody tr td input{width:100%!important;box-sizing:border-box;min-width:38px;}
-    /* $/sqft label + remove button stay compact */
-    .comp-table-wrap tbody tr td.c-ppsf{flex:0 0 auto;align-self:center;font-size:11px;}
+    /* All inputs fill their cell */
+    .comp-table-wrap tbody tr td input{width:100%!important;box-sizing:border-box;min-width:38px;font-size:16px;padding:6px 4px;}
+    /* $/sqft text + remove button: compact */
+    .comp-table-wrap tbody tr td.c-ppsf{flex:0 0 auto;align-self:center;font-size:11px;white-space:nowrap;}
     .comp-table-wrap tbody tr td:last-child{flex:0 0 auto;}
-    /* Hide avg/median footer — already shown in mao-box below */
-    .comp-table-wrap tfoot{display:none;}
-    table th, table td{padding:3px 2px;font-size:12px;}
-    table input{font-size:16px;padding:6px 4px;} /* 16px prevents iOS zoom */
 
     .mao-box{gap:12px;}
     .param-grid{grid-template-columns:1fr 1fr;}
