@@ -10,7 +10,7 @@ export default async function Nav() {
     <header className="flipmuch-nav">
       <Link href="/" className="brand">
         <Logo size={26} />
-        flipmuch
+        GoingFlip
       </Link>
       <nav>
         {profile ? (

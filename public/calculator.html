@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>flipmuch | Fix &amp; Flip Deal Analyzer</title>
+<title>GoingFlip | Fix &amp; Flip Deal Analyzer</title>
 <style>
   :root{
     --navy:#1f3147;
@@ -291,7 +291,7 @@
 
 <header>
   <div class="wordmark">
-    <div class="brandname">flipmuch</div>
+    <div class="brandname">GoingFlip</div>
   </div>
   <div class="titles">
     <h1>Fix &amp; Flip Deal Analyzer</h1>
@@ -538,8 +538,8 @@
   </div>
 
   <div class="card full">
-    <h2><span class="num">6</span> Financing — flipmuch Fix &amp; Flip Program</h2>
-    <p class="sub">Reflects flipmuch's RTL Fix &amp; Flip underwriting matrix (6/22/2026) — experience-tier leverage caps, real rates/points, fee schedule and reserve requirements. Bridge and GUC terms are not used here.</p>
+    <h2><span class="num">6</span> Financing — GoingFlip Fix &amp; Flip Program</h2>
+    <p class="sub">Reflects GoingFlip's RTL Fix &amp; Flip underwriting matrix (6/22/2026) — experience-tier leverage caps, real rates/points, fee schedule and reserve requirements. Bridge and GUC terms are not used here.</p>
     <div class="toggle-row">
       <label class="switch"><input type="checkbox" id="financeToggle"><span class="slider"></span></label>
       <span style="font-size:13.5px;font-weight:600;">This project will be financed</span>
@@ -553,7 +553,7 @@
             <option value="exp" selected>Experienced 3–9 ($5M+ track record)</option>
             <option value="none">0–2 / No Experience</option>
           </select>
-          <p class="hint" style="margin-top:4px;">Tier requires BOTH the stated deal count AND a verified dollar track record (Institutional $10M+, Experienced $5M+). Until verified, flipmuch quotes the conservative 0–2/No Experience tier.</p>
+          <p class="hint" style="margin-top:4px;">Tier requires BOTH the stated deal count AND a verified dollar track record (Institutional $10M+, Experienced $5M+). Until verified, GoingFlip quotes the conservative 0–2/No Experience tier.</p>
         </div>
         <div class="field">
           <label>Borrower FICO</label>
@@ -579,7 +579,7 @@
         <div class="field narrow"><label>Loan Amt Override</label><input type="number" id="loanAmountManual" value="0" min="0"></div>
         <div class="field narrow"><label>Origination Fee % Override</label><input type="number" id="origFeeOverride" value="0" min="0" max="4" step="0.05" placeholder="1.5"></div>
       </div>
-      <p class="hint">Standard origination fee: 1.5% (0–9 experience tiers) / 1.0% (Institutional 10+), per flipmuch's pricing matrix. Leave the override at 0 to use the tier default, or enter a special discounted rate (e.g. 0.5%) when flipmuch offers one. Program max is 4%.</p>
+      <p class="hint">Standard origination fee: 1.5% (0–9 experience tiers) / 1.0% (Institutional 10+), per GoingFlip's pricing matrix. Leave the override at 0 to use the tier default, or enter a special discounted rate (e.g. 0.5%) when GoingFlip offers one. Program max is 4%.</p>
 
       <div class="mao-box">
         <div class="metric"><span class="lbl">Budget / AIV</span><span class="val" id="budgetRatioDisplay">0%</span></div>
@@ -642,10 +642,10 @@
           <button class="inline-btn" id="addDrawBtn" type="button">+ Add Draw</button>
         </div>
         <div class="warn" id="drawOverageWarn" style="display:none;margin-top:8px;"></div>
-        <p class="hint" id="drawFeeRateHint">Each draw is charged a Residential Draw Inspection fee (flipmuch: $300 if the rehab budget is under $2M, $500 at/above $2M) plus a wire fee — both set in Program Parameters (admin only) and included in "Draw/Wire/Ext. Fees" below.</p>
+        <p class="hint" id="drawFeeRateHint">Each draw is charged a Residential Draw Inspection fee (GoingFlip: $300 if the rehab budget is under $2M, $500 at/above $2M) plus a wire fee — both set in Program Parameters (admin only) and included in "Draw/Wire/Ext. Fees" below.</p>
       </div>
 
-      <p class="hint">Modeled as fixed-rate, interest-only with a balloon payment of the Total Loan Amount at maturity — standard for flipmuch's Fix &amp; Flip program. By default, Total Interest assumes the Day 1 balance accrues for the full hold period and the holdback accrues from an average half-balance (draws spread over the hold period). Turn on the draw schedule above for precise, disbursed-balance interest instead.</p>
+      <p class="hint">Modeled as fixed-rate, interest-only with a balloon payment of the Total Loan Amount at maturity — standard for GoingFlip's Fix &amp; Flip program. By default, Total Interest assumes the Day 1 balance accrues for the full hold period and the holdback accrues from an average half-balance (draws spread over the hold period). Turn on the draw schedule above for precise, disbursed-balance interest instead.</p>
       <div class="mao-box">
         <div class="metric"><span class="lbl">Day 1 Monthly Interest</span><span class="val" id="day1MonthlyIODisplay">$0</span></div>
         <div class="metric"><span class="lbl">Monthly IO Payment (fully drawn)</span><span class="val" id="monthlyIODisplay">$0</span></div>
@@ -680,7 +680,7 @@
 
         <div id="paramsContent" style="display:none;">
         <div class="admin-row">
-          <p class="hint" style="margin:0;">Changes save automatically in this browser and apply to every deal you open here. Use "Reset to flipmuch Defaults" to undo all changes.</p>
+          <p class="hint" style="margin:0;">Changes save automatically in this browser and apply to every deal you open here. Use "Reset to GoingFlip Defaults" to undo all changes.</p>
           <button type="button" class="inline-btn" id="lockBtn">Lock Settings</button>
         </div>
 
@@ -774,17 +774,17 @@
           <div class="param-field"><label>Wire Fee, Per Draw ($)</label><input type="number" id="p_draw_wireFee"></div>
           <div class="param-field"><label>Loan Extension Fee ($)</label><input type="number" id="p_draw_extensionFee"></div>
         </div>
-        <p class="hint">Per flipmuch's fee schedule: Residential Draw Inspection is $300 when the rehab/construction budget is under $2,000,000 and $500 at or above that — applies to both Light and Heavy Fix &amp; Flip. Wire fee and extension fee aren't fixed in the program guide — set them to match what your lender/title company actually charges.</p>
+        <p class="hint">Per GoingFlip's fee schedule: Residential Draw Inspection is $300 when the rehab/construction budget is under $2,000,000 and $500 at or above that — applies to both Light and Heavy Fix &amp; Flip. Wire fee and extension fee aren't fixed in the program guide — set them to match what your lender/title company actually charges.</p>
 
         <p class="sub" style="margin:14px 0 4px;font-weight:700;color:var(--navy-light);">Rehab Contingency Minimums</p>
         <div class="param-grid">
           <div class="param-field"><label>Light Fix &amp; Flip — Min Contingency %</label><input type="number" id="p_cont_light" step="0.5"></div>
           <div class="param-field"><label>Heavy Fix &amp; Flip / GUC — Min Contingency %</label><input type="number" id="p_cont_heavy" step="0.5"></div>
         </div>
-        <p class="hint">Per flipmuch's overlays: Light rehab loans require a minimum 5% contingency; Heavy rehab and Ground-Up Construction loans require a minimum 10% contingency. The calculator warns if a deal's Contingency Buffer % (Card 3) falls below the minimum for its classification.</p>
+        <p class="hint">Per GoingFlip's overlays: Light rehab loans require a minimum 5% contingency; Heavy rehab and Ground-Up Construction loans require a minimum 10% contingency. The calculator warns if a deal's Contingency Buffer % (Card 3) falls below the minimum for its classification.</p>
 
         <div class="actions" style="margin:18px 0 0;">
-          <button type="button" class="inline-btn" id="resetParamsBtn">Reset to flipmuch Defaults</button>
+          <button type="button" class="inline-btn" id="resetParamsBtn">Reset to GoingFlip Defaults</button>
         </div>
         <p class="hint">Changes save automatically in this browser as you type — no separate save step needed.</p>
 
@@ -875,7 +875,7 @@
 </main>
 
 <footer>
-  All fees, rates and rule percentages are editable estimates meant to frame the conversation — verify actual inspection/appraisal quotes, lender terms, and comparable sales with licensed professionals before making an offer. flipmuch does not guarantee loan terms shown here; contact your loan officer for an actual quote.
+  All fees, rates and rule percentages are editable estimates meant to frame the conversation — verify actual inspection/appraisal quotes, lender terms, and comparable sales with licensed professionals before making an offer. GoingFlip does not guarantee loan terms shown here; contact your loan officer for an actual quote.
 </footer>
 
 <script>
@@ -1530,7 +1530,7 @@ function calc(){
 
     const minContingency = classification==='Light' ? params.contingency.light : params.contingency.heavy;
     if(contingencyPct < minContingency){
-      notes.push(`flipmuch requires a minimum ${minContingency}% rehab contingency for ${classification} Fix & Flip — current Contingency Buffer % (Card 3) is only ${contingencyPct}%.`);
+      notes.push(`GoingFlip requires a minimum ${minContingency}% rehab contingency for ${classification} Fix & Flip — current Contingency Buffer % (Card 3) is only ${contingencyPct}%.`);
     }
 
     let ltaiv=caps.ltaiv, ltc=caps.ltc, ltarv=caps.ltarv;
@@ -1721,14 +1721,14 @@ function calc(){
       $('termWarning').textContent = `Hold period (${holdMonths} mo) exceeds the loan term (${termMonths} mo) — you'd need to refinance, extend, or sell before the balloon is due.`;
     } else if(termMonths>allowedMax){
       $('termWarning').style.display='block';
-      $('termWarning').textContent = `${classification} Fix & Flip terms run 12–${allowedMax} months under flipmuch's guidelines; ${termMonths} months would need an exception.`;
+      $('termWarning').textContent = `${classification} Fix & Flip terms run 12–${allowedMax} months under GoingFlip's guidelines; ${termMonths} months would need an exception.`;
     } else {
       $('termWarning').style.display='none';
     }
 
     if(tla>0 && tla<params.loanLimits.min){
       $('sizeWarning').style.display='block';
-      $('sizeWarning').textContent = `Total Loan Amount of ${fmtMoney(tla)} is below flipmuch's ${fmtMoney(params.loanLimits.min)} minimum loan size.`;
+      $('sizeWarning').textContent = `Total Loan Amount of ${fmtMoney(tla)} is below GoingFlip's ${fmtMoney(params.loanLimits.min)} minimum loan size.`;
     } else if(tla>params.loanLimits.max){
       $('sizeWarning').style.display='block';
       $('sizeWarning').textContent = `Total Loan Amount exceeds the ${fmtMoney(params.loanLimits.max)} program max — requires Internal Committee (IC) approval.`;
@@ -1930,7 +1930,7 @@ $('p_none_heavy_offered').addEventListener('change', function(){
   $('p_none_heavy_inputs').style.opacity = this.checked ? '1' : '.4';
 });
 $('resetParamsBtn').addEventListener('click', ()=>{
-  if(confirm("Reset all Program Parameters to flipmuch's current defaults? This clears any custom rates, caps, fees, or limits you've entered.")){
+  if(confirm("Reset all Program Parameters to GoingFlip's current defaults? This clears any custom rates, caps, fees, or limits you've entered.")){
     params = cloneDefaults();
     saveParams();
     applyParamsToUI();

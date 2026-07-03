@@ -8,7 +8,7 @@ export default function HomePage() {
           Know if the flip makes sense — before you make an offer.
         </h1>
         <p className="muted" style={{ fontSize: 17, maxWidth: 620, margin: "0 auto 28px" }}>
-          Enter the address, purchase price, rehab budget, and ARV. flipmuch runs the comps,
+          Enter the address, purchase price, rehab budget, and ARV. GoingFlip runs the comps,
           fees, and the 70% rule, and tells you whether the deal works — with a financing
           breakdown if you're using a loan.
         </p>
