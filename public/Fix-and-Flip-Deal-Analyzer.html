@@ -432,6 +432,109 @@
     .card{background:#fff;border:1px solid #ddd;color:#000;}
     header{background:#1f3147!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
   }
+
+  /* ── TRIAL BANNER ── */
+  #trialBanner{
+    display:none;
+    background:linear-gradient(90deg,rgba(251,191,36,0.12),rgba(56,189,248,0.08));
+    border-bottom:1px solid var(--gold);
+    padding:9px 20px;
+    font-size:12.5px;
+    color:var(--text);
+    display:flex;
+    align-items:center;
+    gap:10px;
+    flex-wrap:wrap;
+  }
+  #trialBanner .trial-tag{
+    background:var(--gold);
+    color:#0d1117;
+    font-weight:700;
+    font-size:11px;
+    padding:2px 8px;
+    border-radius:20px;
+    letter-spacing:.3px;
+    flex-shrink:0;
+  }
+  #trialBanner .trial-msg{ flex:1; color:var(--text2); }
+  #trialBanner .trial-cta{
+    background:var(--gold);
+    color:#0d1117;
+    font-weight:700;
+    font-size:12px;
+    padding:5px 14px;
+    border-radius:5px;
+    text-decoration:none;
+    white-space:nowrap;
+    transition:opacity .15s;
+  }
+  #trialBanner .trial-cta:hover{ opacity:.85; }
+
+  /* ── PAYWALL OVERLAY ── */
+  #paywallOverlay{
+    display:none;
+    position:fixed;
+    inset:0;
+    z-index:9999;
+    background:rgba(13,17,23,0.97);
+    backdrop-filter:blur(8px);
+    -webkit-backdrop-filter:blur(8px);
+    align-items:center;
+    justify-content:center;
+    padding:24px;
+  }
+  .paywall-card{
+    background:var(--bg2);
+    border:1px solid var(--border-hi);
+    border-radius:16px;
+    padding:44px 40px 40px;
+    max-width:480px;
+    width:100%;
+    text-align:center;
+    box-shadow:0 24px 60px rgba(0,0,0,0.5);
+  }
+  .paywall-card h2{
+    margin:0 0 10px;
+    font-size:24px;
+    font-weight:800;
+    color:var(--text);
+    letter-spacing:-0.4px;
+  }
+  .paywall-card p{
+    color:var(--text2);
+    font-size:14px;
+    margin:0 0 28px;
+    line-height:1.6;
+  }
+  .paywall-card .pw-features{
+    text-align:left;
+    background:var(--accent-dim);
+    border:1px solid var(--accent);
+    border-radius:8px;
+    padding:14px 18px;
+    margin-bottom:28px;
+    font-size:13px;
+    color:var(--text);
+    line-height:2;
+  }
+  .paywall-card .pw-features span{ color:var(--accent); margin-right:6px; }
+  .pw-upgrade-btn{
+    display:block;
+    width:100%;
+    background:linear-gradient(135deg,var(--gold),#f59e0b);
+    color:#0d1117;
+    font-weight:800;
+    font-size:16px;
+    padding:15px 24px;
+    border-radius:10px;
+    text-decoration:none;
+    letter-spacing:-0.2px;
+    transition:opacity .15s,transform .1s;
+    box-shadow:0 4px 16px rgba(251,191,36,0.3);
+  }
+  .pw-upgrade-btn:hover{ opacity:.9; transform:translateY(-1px); }
+  .pw-sub{ margin-top:14px; font-size:12px; color:var(--muted); }
+
 </style>
 </head>
 <body>
@@ -445,6 +548,29 @@
     <p>Underwrite a purchase, rehab, and resale before you make an offer</p>
   </div>
 </header>
+
+<!-- ── TRIAL BANNER ── -->
+<div id="trialBanner">
+  <span class="trial-tag">FREE TRIAL</span>
+  <span class="trial-msg">You have <strong id="trialCountdown">72h 0m</strong> left in your free trial &nbsp;·&nbsp; Comparable search is locked during trial</span>
+  <a id="trialUpgradeLink" href="#" target="_blank" class="trial-cta">Upgrade Now →</a>
+</div>
+
+<!-- ── PAYWALL OVERLAY ── -->
+<div id="paywallOverlay">
+  <div class="paywall-card">
+    <h2>Your Free Trial Has Ended</h2>
+    <p>You've had 72 hours to explore the GoingFlip Deal Analyzer. Upgrade to keep flipping smarter — unlock live sold comps and full deal analysis.</p>
+    <div class="pw-features">
+      – Full fix &amp; flip deal calculator<br>
+      – Live sold comp searches (10/month)<br>
+      – Financing &amp; draw schedule modeling<br>
+      – MAO, ROI &amp; profit projections
+    </div>
+    <a id="stripeBtn" href="#" target="_blank" class="pw-upgrade-btn">Get Full Access →</a>
+    <p class="pw-sub">Secure checkout via Stripe &nbsp;·&nbsp; Cancel anytime</p>
+  </div>
+</div>
 
 <div class="summary-bar" id="summaryBar">
   <div class="verdict-badge green" id="verdictBadge">Enter deal data</div>
@@ -2075,6 +2201,129 @@ refreshLockUI();
 document.querySelectorAll('input, select').forEach(el=>el.addEventListener('input', calc));
 document.querySelectorAll('select').forEach(el=>el.addEventListener('change', calc));
 calc();
+/* ═══════════════════════════════════════════════════════════════════════════
+   TRIAL / PAYWALL SYSTEM
+   • 72-hour free trial starts on first visit (stored in localStorage)
+   • During trial: full calculator works; live comp search is locked
+   • After 72h: full-screen paywall with Stripe payment link
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+// ── Config ──────────────────────────────────────────────────────────────────
+const STRIPE_PAYMENT_URL = 'https://buy.stripe.com/YOUR_STRIPE_LINK_HERE'; // ← replace with your Stripe payment link
+const TRIAL_DURATION_MS  = 72 * 60 * 60 * 1000; // 72 hours
+const TRIAL_LS_KEY       = 'gf_trial_start_v1';
+
+// ── Helpers ─────────────────────────────────────────────────────────────────
+function getOrSetTrialStart(){
+  let ts = localStorage.getItem(TRIAL_LS_KEY);
+  if(!ts){
+    ts = String(Date.now());
+    localStorage.setItem(TRIAL_LS_KEY, ts);
+  }
+  return parseInt(ts, 10);
+}
+
+function trialMsRemaining(){
+  return Math.max(0, TRIAL_DURATION_MS - (Date.now() - getOrSetTrialStart()));
+}
+
+function fmtCountdown(ms){
+  const totalMins = Math.floor(ms / 60000);
+  const h = Math.floor(totalMins / 60);
+  const m = totalMins % 60;
+  return h + 'h ' + m + 'm';
+}
+
+// ── Paywall ─────────────────────────────────────────────────────────────────
+function showPaywall(){
+  // Set Stripe links
+  const stripeBtn = $('stripeBtn');
+  const trialLink = $('trialUpgradeLink');
+  if(stripeBtn) stripeBtn.href = STRIPE_PAYMENT_URL;
+  if(trialLink) trialLink.href = STRIPE_PAYMENT_URL;
+
+  const overlay = $('paywallOverlay');
+  if(overlay){
+    overlay.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+  }
+}
+
+// ── Lock comps during trial ──────────────────────────────────────────────────
+function applyTrialCompsLock(){
+  const btn = $('findCompsBtn');
+  const planBox = $('planInfoBox');
+  const statusEl = $('compsStatus');
+
+  if(btn){
+    btn.disabled = true;
+    btn.style.opacity = '0.4';
+    btn.style.cursor  = 'not-allowed';
+    btn.title = 'Upgrade to unlock live comp search';
+  }
+
+  if(planBox){
+    planBox.style.background   = 'rgba(251,191,36,0.08)';
+    planBox.style.borderColor  = 'var(--gold)';
+    planBox.innerHTML =
+      '<div style="display:flex;gap:10px;align-items:flex-start;">' +
+      ''<div><strong style="color:var(--gold);">Trial Mode — Comp Search Locked</strong><br>' +
+      'Live sold comp search is a paid feature. ' +
+      '<a href="' + STRIPE_PAYMENT_URL + '" target="_blank" style="color:var(--accent);text-decoration:underline;">Upgrade now</a> ' +
+      'to unlock 10 searches/month. You can still add comps manually below.</div></div>';
+  }
+
+  if(statusEl){
+    statusEl.textContent = 'Comp search available after upgrading.';
+  }
+}
+
+// ── Trial banner ─────────────────────────────────────────────────────────────
+function refreshTrialBanner(){
+  const banner      = $('trialBanner');
+  const countdown   = $('trialCountdown');
+  const trialLink   = $('trialUpgradeLink');
+  if(!banner) return;
+
+  const rem = trialMsRemaining();
+  if(rem <= 0){
+    banner.style.display = 'none';
+    showPaywall();
+    return;
+  }
+  if(countdown) countdown.textContent = fmtCountdown(rem);
+  if(trialLink) trialLink.href = STRIPE_PAYMENT_URL;
+  banner.style.display = 'flex';
+}
+
+// ── Init ─────────────────────────────────────────────────────────────────────
+function initTrialSystem(){
+  getOrSetTrialStart(); // record first-visit timestamp
+
+  const rem = trialMsRemaining();
+
+  if(rem <= 0){
+    // Trial already expired
+    showPaywall();
+    return;
+  }
+
+  // Trial still active
+  applyTrialCompsLock();
+  refreshTrialBanner();
+
+  // Refresh countdown every minute; trigger paywall when time runs out
+  setInterval(function(){
+    if(trialMsRemaining() <= 0){
+      showPaywall();
+    } else {
+      refreshTrialBanner();
+    }
+  }, 60 * 1000);
+}
+
+initTrialSystem();
+
 </script>
 
 </body>
