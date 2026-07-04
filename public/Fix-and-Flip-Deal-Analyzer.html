@@ -1213,7 +1213,7 @@ $('searchOptsToggle').addEventListener('click', ()=>{
 // Set to your full Vercel URL if you want comps to work when the file is
 // opened locally as a file://, e.g.:
 //   const COMPS_API_BASE = 'https://project-k4ljv.vercel.app';
-const COMPS_API_BASE = '';
+const COMPS_API_BASE = window.location.protocol === 'file:' ? 'https://flipmuch-app.vercel.app' : '';
 const COMPS_KEY = 'gf2026sa';  // Must match COMPS_STANDALONE_KEY in Vercel env vars
 
 const findCompsBtn = $('findCompsBtn');
