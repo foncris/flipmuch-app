@@ -150,10 +150,10 @@ export default function CalculatorApp({ deals: initialDeals }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <main className="container" style={{ maxWidth: 1300, padding: "0 0 40px" }}>
+    <main className="container" style={{ maxWidth: "none", padding: "0 16px 40px" }}>
       <style>{`
-        .calc-layout{display:flex;gap:24px;align-items:flex-start;padding:20px 24px 0;}
-        .calc-sidebar{width:240px;flex-shrink:0;}
+        .calc-layout{display:flex;gap:16px;align-items:flex-start;padding:16px 0 0;}
+        .calc-sidebar{width:180px;flex-shrink:0;}
         .calc-main{flex:1;min-width:0;overflow:hidden;}
         .calc-topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
         .sidebar-toggle{display:none;}
