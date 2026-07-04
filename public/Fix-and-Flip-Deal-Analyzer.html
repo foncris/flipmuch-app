@@ -1164,6 +1164,17 @@ function readParamsFromUI(){
 
 /* ---------- Comps table ---------- */
 const compsBody = $('compsBody');
+let compPool    = [];  // all fetched comps sorted by distance (set by fetchComps)
+let compPoolIdx = 0;   // index of next pool comp not yet shown
+const POOL_DISPLAY = 3; // how many comps to show at a time
+
+function showNextFromPool(){
+  if(compPoolIdx < compPool.length){
+    const c = compPool[compPoolIdx++];
+    addCompRow(c);
+  }
+}
+
 function addCompRow(data){
   data = data || {};
   const tr = document.createElement('tr');
@@ -1178,7 +1189,7 @@ function addCompRow(data){
     <td><button type="button" class="rm-btn" title="Remove comp">✕</button></td>
   `;
   tr.querySelectorAll('input').forEach(i=>i.addEventListener('input', calc));
-  tr.querySelector('.rm-btn').addEventListener('click', ()=>{tr.remove(); calc();});
+  tr.querySelector('.rm-btn').addEventListener('click', ()=>{tr.remove(); showNextFromPool(); calc();});
   compsBody.appendChild(tr);
 }
 $('addCompBtn').addEventListener('click', ()=>addCompRow());
@@ -1263,9 +1274,14 @@ async function fetchComps(){
     const filtered = withPpsf.filter(c => c.ppsf >= threshold);
     const dropped  = comps.length - filtered.length;
 
-    filtered.forEach(c=>{
-      addCompRow({ addr:c.address, dist:c.distance, beds:c.beds, baths:c.baths, sqft:c.sqft, price:c.price });
-    });
+    // Sort by distance; store full list in pool; display only closest 3
+    compPool = filtered
+      .map(c => ({ addr:c.address, dist:c.distance, beds:c.beds, baths:c.baths, sqft:c.sqft, price:c.price }))
+      .sort((a,b) => (a.dist||99) - (b.dist||99));
+    compPoolIdx = Math.min(POOL_DISPLAY, compPool.length);
+
+    compsBody.innerHTML = '';
+    compPool.slice(0, POOL_DISPLAY).forEach(c => addCompRow(c));
 
     if(!filtered.length && !comps.length){
       compsStatusEl.textContent = 'No confirmed sold comps found even after widening to 12 months / 3 mi — add comps manually or re-check subject specs.';
@@ -1273,7 +1289,8 @@ async function fetchComps(){
       const r = json.radiusUsed ? `${json.radiusUsed} mi` : '—';
       const m = json.daysOldUsed ? `${Math.round(json.daysOldUsed/30)} mo` : '—';
       const droppedNote = dropped > 0 ? ` (${dropped} outlier${dropped>1?'s':''} removed — likely land/lot sales)` : '';
-      compsStatusEl.textContent = `Found ${filtered.length} confirmed sold comp(s) within ${r}, last ${m}.${droppedNote} Verify condition/lot size against MLS.`;
+      const poolNote = compPool.length > POOL_DISPLAY ? ` Showing 3 closest — delete one to load the next.` : '';
+      compsStatusEl.textContent = `Found ${compPool.length} sold comp(s) within ${r}, last ${m}.${droppedNote}${poolNote}`;
     }
     showUsageBanner(json.usage);
     calc();
@@ -1306,7 +1323,7 @@ function addDrawRow(data){
     <td><button type="button" class="rm-btn" title="Remove draw">✕</button></td>
   `;
   tr.querySelectorAll('input').forEach(i=>i.addEventListener('input', calc));
-  tr.querySelector('.rm-btn').addEventListener('click', ()=>{tr.remove(); calc();});
+  tr.querySelector('.rm-btn').addEventListener('click', ()=>{tr.remove(); showNextFromPool(); calc();});
   drawsBody.appendChild(tr);
 }
 $('addDrawBtn').addEventListener('click', ()=>addDrawRow());
