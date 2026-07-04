@@ -355,6 +355,9 @@
 
   /* ── MOBILE COMPS CARDS ── */
   @media(max-width:640px){
+    /* Status message: always on its own full-width line */
+    #compsStatus{ flex-basis:100% !important; margin-top:2px; line-height:1.4; }
+
     #compsTable, #compsTable tbody { display:block; }
     #compsTable thead { display:none; }
     #compsTable tfoot { display:block; }
@@ -364,60 +367,60 @@
     }
     #compsTable tfoot tr td:first-child { display:none; }
 
-    /* Each comp = card, position:relative so delete btn can be absolute */
+    /* Each comp = card */
     #compsTable tbody tr {
-      display:block;
-      position:relative;
-      background:var(--paper);
-      border:1px solid var(--line);
-      border-radius:8px;
-      padding:10px;
-      margin-bottom:10px;
+      display:block; position:relative;
+      background:var(--paper); border:1px solid var(--line);
+      border-radius:8px; padding:10px; margin-bottom:10px;
+      box-sizing:border-box;
     }
 
-    /* Row 1: Address full width (leave room for abs delete btn) */
+    /* Row 1: Address full width */
     #compsTable tbody tr td:nth-child(1){
       display:block; padding-right:34px; margin-bottom:8px;
     }
     #compsTable .c-addr{ width:100% !important; box-sizing:border-box; }
 
-    /* Delete button: absolute top-right */
+    /* Delete: absolute top-right */
     #compsTable tbody tr td:nth-child(8){
-      position:absolute; top:10px; right:10px;
-      display:flex; align-items:center;
+      position:absolute; top:10px; right:10px; display:flex; align-items:center;
     }
 
-    /* Row 2: Dist Beds Baths Sqft — 4 equal columns */
+    /* Row 2: Dist Beds Baths — 3 equal items */
     #compsTable tbody tr td:nth-child(2),
     #compsTable tbody tr td:nth-child(3),
-    #compsTable tbody tr td:nth-child(4),
-    #compsTable tbody tr td:nth-child(5){
-      display:inline-block; width:calc(25% - 5px);
-      margin-right:5px; margin-bottom:8px; vertical-align:top;
+    #compsTable tbody tr td:nth-child(4){
+      display:inline-block; width:calc(33.3% - 6px);
+      margin-right:6px; margin-bottom:8px; vertical-align:top; box-sizing:border-box;
     }
-    #compsTable tbody tr td:nth-child(5){ margin-right:0; }
-    #compsTable .c-dist, #compsTable .c-beds,
-    #compsTable .c-baths, #compsTable .c-sqft{
+    #compsTable tbody tr td:nth-child(4){ margin-right:0; }
+
+    /* Row 3: Sqft + Sale Price — 2 items */
+    #compsTable tbody tr td:nth-child(5){
+      display:inline-block; width:calc(35% - 6px);
+      margin-right:6px; margin-bottom:8px; vertical-align:top; box-sizing:border-box;
+    }
+    #compsTable tbody tr td:nth-child(6){
+      display:inline-block; width:calc(65% - 0px);
+      margin-right:0; margin-bottom:8px; vertical-align:top; box-sizing:border-box;
+    }
+
+    #compsTable .c-dist, #compsTable .c-beds, #compsTable .c-baths,
+    #compsTable .c-sqft, #compsTable .c-price{
       width:100% !important; box-sizing:border-box;
     }
 
-    /* Row 3: Sale Price (wider) + $/sf */
-    #compsTable tbody tr td:nth-child(6){
-      display:inline-block; width:calc(62% - 8px);
-      margin-right:8px; vertical-align:middle;
-    }
-    #compsTable .c-price{ width:100% !important; box-sizing:border-box; }
+    /* Row 4: $/sf right-aligned */
     #compsTable tbody tr td:nth-child(7){
-      display:inline-block; width:35%;
-      text-align:right; vertical-align:middle;
-      font-size:15px; font-weight:600;
+      display:block; text-align:right;
+      font-size:15px; font-weight:600; padding-bottom:2px;
     }
 
     /* Mini labels */
-    #compsTable tbody tr td:nth-child(2)::before{ content:"Dist";  display:block; font-size:10px; color:var(--muted); margin-bottom:2px; }
-    #compsTable tbody tr td:nth-child(3)::before{ content:"Beds";  display:block; font-size:10px; color:var(--muted); margin-bottom:2px; }
-    #compsTable tbody tr td:nth-child(4)::before{ content:"Baths"; display:block; font-size:10px; color:var(--muted); margin-bottom:2px; }
-    #compsTable tbody tr td:nth-child(5)::before{ content:"Sqft";  display:block; font-size:10px; color:var(--muted); margin-bottom:2px; }
+    #compsTable tbody tr td:nth-child(2)::before{ content:"Dist";       display:block; font-size:10px; color:var(--muted); margin-bottom:2px; }
+    #compsTable tbody tr td:nth-child(3)::before{ content:"Beds";       display:block; font-size:10px; color:var(--muted); margin-bottom:2px; }
+    #compsTable tbody tr td:nth-child(4)::before{ content:"Baths";      display:block; font-size:10px; color:var(--muted); margin-bottom:2px; }
+    #compsTable tbody tr td:nth-child(5)::before{ content:"Sqft";       display:block; font-size:10px; color:var(--muted); margin-bottom:2px; }
     #compsTable tbody tr td:nth-child(6)::before{ content:"Sale Price"; display:block; font-size:10px; color:var(--muted); margin-bottom:2px; }
   }
 
