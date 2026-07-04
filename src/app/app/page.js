@@ -7,7 +7,7 @@ export default async function AppPage() {
   const profile = await getProfile();
   if (!profile) redirect("/login");
 
-  const isActive = profile.subscription_status === "active" || profile.role === "admin";
+  const isActive = profile.subscription_status === "active" || profile.subscription_status === "trialing" || profile.role === "admin";
 
   if (!isActive) {
     return (
