@@ -352,6 +352,54 @@
     border-top:1px solid var(--border);
   }
 
+
+  /* ── MOBILE COMPS CARDS ── */
+  @media(max-width:640px){
+    #compsTable, #compsTable tbody { display:block; }
+    #compsTable thead { display:none; }
+    #compsTable tfoot { display:block; }
+    #compsTable tfoot tr {
+      display:flex; justify-content:flex-end; align-items:center;
+      gap:8px; padding:6px 2px; border:none; background:none;
+    }
+    #compsTable tfoot tr td:first-child { display:none; }
+
+    /* Each comp = card */
+    #compsTable tbody tr {
+      display:flex; flex-wrap:wrap; align-items:flex-end;
+      gap:6px 6px;
+      background:var(--paper);
+      border:1px solid var(--line);
+      border-radius:8px;
+      padding:10px;
+      margin-bottom:10px;
+    }
+    /* Address: most of first row */
+    #compsTable tbody tr td:nth-child(1){ order:1; flex:1 1 calc(100% - 36px); }
+    #compsTable .c-addr{ width:100% !important; }
+    /* Delete: end of first row */
+    #compsTable tbody tr td:nth-child(8){ order:2; flex:0 0 28px; align-self:center; }
+
+    /* Second row: dist beds baths sqft price ppsf */
+    #compsTable tbody tr td:nth-child(2){ order:3; flex:0 0 52px; }
+    #compsTable tbody tr td:nth-child(3){ order:4; flex:0 0 44px; }
+    #compsTable tbody tr td:nth-child(4){ order:5; flex:0 0 44px; }
+    #compsTable tbody tr td:nth-child(5){ order:6; flex:0 0 64px; }
+    #compsTable tbody tr td:nth-child(6){ order:7; flex:1 1 90px; }
+    #compsTable tbody tr td:nth-child(7){ order:8; flex:0 0 auto; font-size:14px; }
+
+    #compsTable .c-dist, #compsTable .c-beds,
+    #compsTable .c-baths, #compsTable .c-sqft,
+    #compsTable .c-price { width:100% !important; }
+
+    /* Mini labels above each input */
+    #compsTable tbody tr td:nth-child(2)::before{ content:"Dist"; display:block; font-size:10px; color:var(--muted); margin-bottom:2px; }
+    #compsTable tbody tr td:nth-child(3)::before{ content:"Beds"; display:block; font-size:10px; color:var(--muted); margin-bottom:2px; }
+    #compsTable tbody tr td:nth-child(4)::before{ content:"Baths"; display:block; font-size:10px; color:var(--muted); margin-bottom:2px; }
+    #compsTable tbody tr td:nth-child(5)::before{ content:"Sqft"; display:block; font-size:10px; color:var(--muted); margin-bottom:2px; }
+    #compsTable tbody tr td:nth-child(6)::before{ content:"Sale Price"; display:block; font-size:10px; color:var(--muted); margin-bottom:2px; }
+  }
+
   /* ── PRINT ── */
   @media print{
     body{background:#fff;color:#000;}
@@ -463,7 +511,7 @@
 
     <div id="compUsageBanner" style="display:none;margin-bottom:10px;padding:8px 12px;border-radius:5px;font-size:12.5px;line-height:1.5;"></div>
 
-    <table>
+    <table id="compsTable">
       <thead>
         <tr><th style="width:26%">Address</th><th>Distance (mi)</th><th>Beds</th><th>Baths</th><th>Sq. Ft.</th><th>Sale Price</th><th>$ / Sq.Ft.</th><th></th></tr>
       </thead>
