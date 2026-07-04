@@ -1249,15 +1249,30 @@ async function fetchComps(){
 
     const comps = json.comps || [];
     compsBody.innerHTML = '';
-    comps.forEach(c=>{
+
+    // Outlier filter: drop comps where $/sqft < 40% of the median (catches land sales, typos, etc.)
+    const withPpsf = comps.filter(c => c.sqft > 0 && c.price > 0)
+      .map(c => ({ ...c, ppsf: c.price / c.sqft }));
+    const sorted = [...withPpsf].sort((a,b) => a.ppsf - b.ppsf);
+    const mid = Math.floor(sorted.length / 2);
+    const medianPpsfRaw = sorted.length
+      ? (sorted.length % 2 ? sorted[mid].ppsf : (sorted[mid-1].ppsf + sorted[mid].ppsf) / 2)
+      : 0;
+    const threshold = medianPpsfRaw * 0.40;
+    const filtered = withPpsf.filter(c => c.ppsf >= threshold);
+    const dropped  = comps.length - filtered.length;
+
+    filtered.forEach(c=>{
       addCompRow({ addr:c.address, dist:c.distance, beds:c.beds, baths:c.baths, sqft:c.sqft, price:c.price });
     });
-    if(!comps.length){
+
+    if(!filtered.length && !comps.length){
       compsStatusEl.textContent = 'No confirmed sold comps found even after widening to 12 months / 3 mi — add comps manually or re-check subject specs.';
     } else {
       const r = json.radiusUsed ? `${json.radiusUsed} mi` : '—';
       const m = json.daysOldUsed ? `${Math.round(json.daysOldUsed/30)} mo` : '—';
-      compsStatusEl.textContent = `Found ${comps.length} confirmed sold comp(s) within ${r}, last ${m}. Verify condition/lot size against MLS.`;
+      const droppedNote = dropped > 0 ? ` (${dropped} outlier${dropped>1?'s':''} removed — likely land/lot sales)` : '';
+      compsStatusEl.textContent = `Found ${filtered.length} confirmed sold comp(s) within ${r}, last ${m}.${droppedNote} Verify condition/lot size against MLS.`;
     }
     showUsageBanner(json.usage);
     calc();
