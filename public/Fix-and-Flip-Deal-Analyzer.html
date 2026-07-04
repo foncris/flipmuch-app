@@ -1,0 +1,1969 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GoingFlip | Fix &amp; Flip Deal Analyzer</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+
+  :root{
+    /* Core palette — high contrast dark theme */
+    --bg:#0d1117;
+    --bg2:#161b22;
+    --card:#161b22;
+    --border:#21262d;
+    --border-hi:#30363d;
+    --accent:#38bdf8;       /* sky-400 — readable on dark */
+    --accent-dim:rgba(56,189,248,0.10);
+    --accent-glow:rgba(56,189,248,0.22);
+    --gold:#fbbf24;         /* amber-400 */
+    --gold-dim:rgba(251,191,36,0.10);
+    --text:#f0f6fc;         /* near-white */
+    --text2:#8b949e;        /* secondary */
+    --muted:#6e7681;
+    --green:#3fb950;
+    --green-bg:rgba(63,185,80,0.10);
+    --amber:#d29922;
+    --amber-bg:rgba(210,153,34,0.10);
+    --red:#f85149;
+    --red-bg:rgba(248,81,73,0.10);
+    /* aliases for backward compat with JS-generated markup */
+    --navy:#38bdf8;
+    --navy-light:#7dd3fc;
+    --ink:#f0f6fc;
+    --line:#21262d;
+    --paper:#161b22;
+    --cream:#0d1117;
+  }
+
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:'Inter','Helvetica Neue',Arial,sans-serif;
+    background:var(--bg);
+    color:var(--text);
+    line-height:1.55;
+    font-size:14px;
+  }
+
+  /* ── HEADER ── */
+  header{
+    background:#0d1117;
+    color:#fff;
+    padding:18px 28px;
+    display:flex;
+    align-items:center;
+    gap:18px;
+    position:relative;
+  }
+  header::after{
+    content:'';
+    position:absolute;
+    bottom:0;left:0;right:0;
+    height:1px;
+    background:linear-gradient(90deg,var(--accent),var(--gold),transparent 80%);
+  }
+  .wordmark{display:flex;flex-direction:column;line-height:1;}
+  .wordmark .brandname{
+    font-weight:900;
+    font-size:24px;
+    letter-spacing:-0.5px;
+    color:var(--accent);
+  }
+  header .titles{
+    margin-left:14px;
+    padding-left:18px;
+    border-left:1px solid #30363d;
+  }
+  header h1{
+    margin:0;
+    font-size:16px;
+    font-weight:700;
+    color:var(--text);
+    letter-spacing:-0.2px;
+  }
+  header p{
+    margin:2px 0 0;
+    font-size:12px;
+    color:var(--text2);
+  }
+
+  /* ── STICKY SUMMARY BAR ── */
+  .summary-bar{
+    position:sticky;
+    top:0;
+    z-index:50;
+    background:rgba(13,17,23,0.97);
+    backdrop-filter:blur(10px);
+    -webkit-backdrop-filter:blur(10px);
+    border-bottom:1px solid var(--border);
+    box-shadow:0 2px 16px rgba(0,0,0,0.5);
+    padding:10px 20px;
+    display:flex;
+    flex-wrap:nowrap;          /* NO wrapping — bar scrolls */
+    align-items:center;
+    gap:20px;
+    overflow-x:auto;
+    -webkit-overflow-scrolling:touch;
+    scrollbar-width:none;
+  }
+  .summary-bar::-webkit-scrollbar{display:none;}
+
+  .verdict-badge{
+    flex-shrink:0;
+    padding:6px 14px;
+    border-radius:6px;
+    font-weight:700;
+    font-size:11px;
+    letter-spacing:.6px;
+    text-transform:uppercase;
+    white-space:nowrap;
+  }
+  .verdict-badge.green{background:var(--green-bg);color:var(--green);border:1px solid rgba(63,185,80,0.3);}
+  .verdict-badge.amber{background:var(--amber-bg);color:var(--amber);border:1px solid rgba(210,153,34,0.3);}
+  .verdict-badge.red{background:var(--red-bg);color:var(--red);border:1px solid rgba(248,81,73,0.3);}
+
+  .metric{display:flex;flex-direction:column;flex-shrink:0;min-width:80px;}
+  .metric .lbl{
+    font-size:9px;text-transform:uppercase;letter-spacing:.7px;
+    color:var(--muted);font-weight:600;white-space:nowrap;
+  }
+  .metric .val{
+    font-size:15px;font-weight:800;color:#fff;
+    letter-spacing:-0.3px;white-space:nowrap;
+    margin-top:1px;
+  }
+  .metric .val.neg{color:var(--red);}
+
+  /* ── MAIN LAYOUT ── */
+  main{max-width:1200px;margin:0 auto;padding:24px 20px 80px;}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+  @media(max-width:880px){.grid{grid-template-columns:1fr;}}
+
+  /* ── CARDS ── */
+  .card{
+    background:var(--card);
+    border:1px solid var(--border);
+    border-radius:10px;
+    padding:20px 20px;
+    margin-bottom:16px;
+  }
+  .card h2{
+    margin:0 0 4px;
+    font-size:14.5px;
+    font-weight:700;
+    color:var(--text);
+    display:flex;
+    align-items:center;
+    gap:9px;
+    letter-spacing:-0.2px;
+  }
+  .card h2 .num{
+    background:var(--accent);
+    color:#0d1117;
+    width:21px;height:21px;
+    border-radius:5px;
+    font-size:11px;
+    font-weight:800;
+    display:inline-flex;align-items:center;justify-content:center;
+    flex-shrink:0;
+  }
+  .card .sub{font-size:11.5px;color:var(--text2);margin:0 0 14px;line-height:1.5;}
+  .full{grid-column:1/-1;}
+
+  /* ── FORM FIELDS ── */
+  .field-row{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:10px;}
+  .field{flex:1 1 140px;display:flex;flex-direction:column;gap:4px;}
+  .field.narrow{flex:0 0 100px;}
+  label{font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;}
+  input[type=text],input[type=number],input[type=date],select{
+    border:1px solid var(--border-hi);
+    border-radius:6px;
+    padding:8px 10px;
+    font-size:13.5px;
+    font-weight:500;
+    font-family:'Inter',inherit;
+    background:#0d1117;
+    color:var(--text);          /* bright near-white */
+    transition:border-color .15s,box-shadow .15s;
+    -webkit-appearance:none;
+  }
+  input[type=text]:hover,input[type=number]:hover,input[type=date]:hover,select:hover{
+    border-color:#484f58;
+  }
+  input:focus,select:focus{
+    outline:none;
+    border-color:var(--accent);
+    box-shadow:0 0 0 3px var(--accent-glow);
+  }
+  select option{background:#161b22;color:var(--text);}
+
+  .hint{font-size:11px;color:var(--muted);margin-top:3px;line-height:1.5;}
+
+  .inline-btn{
+    border:1px solid var(--border-hi);
+    background:transparent;
+    color:var(--text2);
+    border-radius:6px;
+    padding:7px 13px;
+    font-size:12px;
+    font-weight:600;
+    font-family:'Inter',inherit;
+    cursor:pointer;
+    white-space:nowrap;
+    transition:all .15s;
+  }
+  .inline-btn:hover{
+    background:var(--accent-dim);
+    border-color:var(--accent);
+    color:var(--accent);
+  }
+  .inline-btn.gold{border-color:rgba(251,191,36,0.35);color:var(--gold);}
+  .inline-btn.gold:hover{background:var(--gold-dim);border-color:var(--gold);}
+
+  /* ── TABLES ── */
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  table th{
+    text-align:left;font-size:9.5px;text-transform:uppercase;letter-spacing:.5px;
+    font-weight:700;color:var(--muted);border-bottom:1px solid var(--border);padding:7px 7px;
+  }
+  table td{padding:6px 7px;border-bottom:1px solid rgba(33,38,45,0.8);color:var(--text);}
+  table input{width:100%;padding:5px 7px;font-size:13px;}
+  .comp-foot td{font-weight:700;color:var(--accent);border-bottom:none;padding-top:10px;}
+  .rm-btn{background:none;border:none;color:var(--red);font-size:16px;cursor:pointer;line-height:1;opacity:.75;}
+  .rm-btn:hover{opacity:1;}
+
+  /* ── RADIO GROUPS ── */
+  .radio-group{display:flex;gap:18px;align-items:center;flex-wrap:wrap;}
+  .radio-group label.opt{
+    display:flex;align-items:center;gap:7px;font-weight:500;
+    text-transform:none;letter-spacing:0;color:var(--text);font-size:13px;cursor:pointer;
+  }
+  .radio-group input[type=radio]{accent-color:var(--accent);width:15px;height:15px;}
+
+  /* ── MAO / METRIC BOXES ── */
+  .mao-box{
+    margin-top:12px;padding:14px 16px;border-radius:8px;
+    background:rgba(56,189,248,0.04);
+    border:1px solid rgba(56,189,248,0.12);
+    display:flex;flex-wrap:wrap;gap:20px;align-items:center;
+  }
+  .mao-box .metric .val{color:var(--accent);}
+  .mao-box .pass{color:var(--green);font-weight:700;}
+  .mao-box .fail{color:var(--red);font-weight:700;}
+
+  /* ── TOGGLE SWITCH ── */
+  .toggle-row{display:flex;align-items:center;gap:10px;margin-bottom:14px;}
+  .toggle-row span{font-size:13.5px;font-weight:600;color:var(--text);}
+  .switch{position:relative;display:inline-block;width:44px;height:24px;}
+  .switch input{opacity:0;width:0;height:0;}
+  .slider{position:absolute;cursor:pointer;inset:0;background:#21262d;border-radius:24px;transition:.2s;border:1px solid var(--border-hi);}
+  .slider:before{position:absolute;content:"";height:16px;width:16px;left:3px;bottom:3px;background:var(--muted);border-radius:50%;transition:.2s;}
+  input:checked+.slider{background:rgba(56,189,248,0.15);border-color:var(--accent);}
+  input:checked+.slider:before{transform:translateX(20px);background:var(--accent);}
+  #financePanel{display:none;}
+  #financePanel.show{display:block;}
+
+  /* ── WARNINGS ── */
+  .warn{
+    background:rgba(210,153,34,0.08);color:var(--amber);
+    border:1px solid rgba(210,153,34,0.3);
+    padding:9px 13px;border-radius:6px;font-size:12.5px;margin-top:10px;
+  }
+
+  /* ── DETAILS / SETTINGS ── */
+  details.settings{
+    margin-top:16px;border:1px solid var(--border);
+    border-radius:8px;padding:2px 16px 14px;background:#0d1117;
+  }
+  details.settings summary{
+    cursor:pointer;font-weight:700;color:var(--text2);padding:10px 0;
+    font-size:11.5px;list-style:none;display:flex;align-items:center;gap:8px;
+    text-transform:uppercase;letter-spacing:.6px;transition:color .15s;
+  }
+  details.settings summary:hover{color:var(--accent);}
+  details.settings summary::-webkit-details-marker{display:none;}
+  details.settings summary:before{content:"▸";display:inline-block;transition:transform .15s;font-size:10px;color:var(--accent);}
+  details.settings[open] summary:before{transform:rotate(90deg);}
+
+  .param-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px 14px;margin-top:8px;}
+  .param-field{display:flex;flex-direction:column;gap:4px;}
+  .param-field label{font-size:10px;}
+  .param-field input{padding:6px 8px;font-size:13px;}
+  table.param-table{width:100%;border-collapse:collapse;font-size:12px;margin-top:6px;}
+  table.param-table th{font-size:9.5px;text-transform:uppercase;color:var(--muted);text-align:center;padding:5px;border-bottom:1px solid var(--border);}
+  table.param-table td{padding:4px;text-align:center;border-bottom:1px solid rgba(33,38,45,0.6);color:var(--text);}
+  table.param-table td:first-child{text-align:left;font-weight:600;color:var(--text2);}
+  table.param-table input{width:62px;text-align:center;padding:5px 4px;font-size:12.5px;}
+
+  /* ── PIN GATE ── */
+  .pin-gate{
+    padding:18px;text-align:center;background:#0d1117;
+    border:1px solid var(--border);border-radius:8px;margin-top:8px;
+  }
+  .pin-gate input[type=password]{
+    width:120px;text-align:center;letter-spacing:5px;font-size:16px;
+    padding:8px;display:inline-block;margin:0 8px 10px 0;
+    background:#0d1117;border:1px solid var(--border-hi);color:var(--text);border-radius:6px;
+  }
+  .pin-gate .pin-err{color:var(--red);font-size:12px;margin-top:6px;display:none;}
+  .admin-row{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:4px;flex-wrap:wrap;}
+  .pin-change{margin-top:16px;padding-top:14px;border-top:1px solid var(--border);}
+  .pin-change input{width:100px;text-align:center;letter-spacing:3px;margin-right:8px;}
+
+  /* ── DEAL BREAKDOWN TABLE ── */
+  .breakdown{width:100%;border-collapse:collapse;font-size:13.5px;}
+  .breakdown td{padding:7px 5px;border-bottom:1px solid rgba(33,38,45,0.7);color:var(--text);}
+  .breakdown td.amt{text-align:right;font-weight:700;color:#fff;white-space:nowrap;}
+  .breakdown tr.total td{
+    border-top:1px solid var(--accent);border-bottom:none;
+    font-weight:800;padding-top:10px;font-size:14px;color:var(--text);
+  }
+  .breakdown tr.total td.amt{color:var(--accent);}
+  .breakdown tr.profit td{font-weight:800;font-size:15px;color:var(--text);}
+  .breakdown tr.profit td.amt{color:var(--green);}
+  .breakdown tr.profit td.amt.neg{color:var(--red);}
+  .section-label td{
+    padding-top:14px;font-weight:700;color:var(--accent);font-size:10px;
+    text-transform:uppercase;letter-spacing:.8px;border-bottom:none;
+  }
+
+  /* ── RANGE SLIDER ── */
+  input[type=range]{
+    -webkit-appearance:none;appearance:none;
+    width:100%;height:4px;border-radius:2px;
+    background:var(--border-hi);outline:none;cursor:pointer;
+  }
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none;appearance:none;
+    width:16px;height:16px;border-radius:50%;
+    background:var(--accent);cursor:pointer;
+  }
+
+  /* ── ACTIONS ── */
+  .actions{display:flex;gap:10px;flex-wrap:wrap;margin:22px 0 8px;}
+
+  /* ── FOOTER ── */
+  footer{
+    max-width:1200px;margin:0 auto;
+    padding:20px 20px 50px;
+    font-size:11px;color:var(--muted);line-height:1.6;
+    border-top:1px solid var(--border);
+  }
+
+  /* ── PRINT ── */
+  @media print{
+    body{background:#fff;color:#000;}
+    .summary-bar{position:static;background:#fff;overflow:visible;}
+    .actions,.inline-btn,.rm-btn{display:none!important;}
+    .card{background:#fff;border:1px solid #ddd;color:#000;}
+    header{background:#1f3147!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wordmark">
+    <div class="brandname">GoingFlip</div>
+  </div>
+  <div class="titles">
+    <h1>Fix &amp; Flip Deal Analyzer</h1>
+    <p>Underwrite a purchase, rehab, and resale before you make an offer</p>
+  </div>
+</header>
+
+<div class="summary-bar" id="summaryBar">
+  <div class="verdict-badge green" id="verdictBadge">Enter deal data</div>
+  <div class="metric"><span class="lbl">ARV</span><span class="val" id="m-arv">$0</span></div>
+  <div class="metric"><span class="lbl">All-in Cost</span><span class="val" id="m-cost">$0</span></div>
+  <div class="metric"><span class="lbl">Net Profit</span><span class="val" id="m-profit">$0</span></div>
+  <div class="metric"><span class="lbl">Cash Invested</span><span class="val" id="m-cash">$0</span></div>
+  <div class="metric"><span class="lbl">Cash-on-Cash ROI</span><span class="val" id="m-roi">0%</span></div>
+  <div class="metric"><span class="lbl">Annualized ROI</span><span class="val" id="m-aroi">0%</span></div>
+  <div class="metric"><span class="lbl">60/70 Rule</span><span class="val" id="m-rule">—</span></div>
+</div>
+
+<main>
+
+  <div class="card full">
+    <h2><span class="num">1</span> Subject Property</h2>
+    <p class="sub">Basic features drive the inspection &amp; appraisal fee estimates below.</p>
+    <div class="field-row">
+      <div class="field" style="flex:2 1 260px;">
+        <label>Property Address</label>
+        <input type="text" id="subAddress" placeholder="123 Main St, City, ST 00000">
+      </div>
+      <div class="field narrow">
+        <label>Sq. Ft.</label>
+        <input type="number" id="subSqft" value="1600" min="0">
+      </div>
+      <div class="field narrow">
+        <label>Beds</label>
+        <input type="number" id="subBeds" value="3" min="0">
+      </div>
+      <div class="field narrow">
+        <label>Baths</label>
+        <input type="number" id="subBaths" value="2" min="0" step="0.5">
+      </div>
+      <div class="field narrow">
+        <label>Year Built</label>
+        <input type="number" id="subYear" value="1985" min="1800">
+      </div>
+      <div class="field narrow">
+        <label>Units</label>
+        <input type="number" id="subUnits" value="1" min="1">
+      </div>
+    </div>
+  </div>
+
+  <div class="card full">
+    <h2 style="margin-bottom:10px;"><span class="num">2</span> Sales Comparables</h2>
+
+    <div style="display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:8px;">
+      <button class="inline-btn gold" id="findCompsBtn" type="button">🔍 Find Sold Comps</button>
+      <button type="button" id="searchOptsToggle" style="background:none;border:1px solid var(--line);border-radius:5px;padding:5px 11px;font-size:12.5px;color:var(--muted);cursor:pointer;">⚙️ Search options</button>
+      <span id="compsStatus" style="font-size:13px;color:var(--muted);flex:1;min-width:0;"></span>
+    </div>
+
+    <div id="searchOptsPanel" style="display:none;background:var(--cream);border:1px solid var(--line);border-radius:6px;padding:14px 16px;margin-bottom:12px;">
+      <div style="font-size:11.5px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin-bottom:10px;font-weight:600;">Search Options</div>
+      <div style="display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end;">
+        <div class="field" style="min-width:120px;">
+          <label style="font-size:12px;">Comps to find</label>
+          <select id="optCompCount" style="width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:4px;font-size:13px;background:var(--paper);">
+            <option value="3" selected>3 (default)</option>
+            <option value="4">4</option>
+            <option value="5">5</option>
+          </select>
+        </div>
+        <div class="field" style="min-width:140px;">
+          <label style="font-size:12px;">Max search radius</label>
+          <select id="optRadius" style="width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:4px;font-size:13px;background:var(--paper);">
+            <option value="">Auto (1.5–3 mi)</option>
+            <option value="1">1 mi (tight)</option>
+            <option value="2">2 mi</option>
+            <option value="3">3 mi</option>
+          </select>
+        </div>
+        <div class="field" style="min-width:150px;">
+          <label style="font-size:12px;">Max sale age</label>
+          <select id="optDays" style="width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:4px;font-size:13px;background:var(--paper);">
+            <option value="">Auto (3–12 mo)</option>
+            <option value="90">3 months (recent)</option>
+            <option value="180">6 months</option>
+            <option value="365">12 months</option>
+          </select>
+        </div>
+        <p style="font-size:11.5px;color:var(--muted);margin:4px 0 0;width:100%;line-height:1.5;">Auto settings escalate automatically — starts tight and widens only if needed.</p>
+      </div>
+    </div>
+
+    <div id="compUsageBanner" style="display:none;margin-bottom:10px;padding:8px 12px;border-radius:5px;font-size:12.5px;line-height:1.5;"></div>
+
+    <table>
+      <thead>
+        <tr><th style="width:26%">Address</th><th>Distance (mi)</th><th>Beds</th><th>Baths</th><th>Sq. Ft.</th><th>Sale Price</th><th>$ / Sq.Ft.</th><th></th></tr>
+      </thead>
+      <tbody id="compsBody"></tbody>
+      <tfoot>
+        <tr class="comp-foot">
+          <td colspan="5"></td>
+          <td>Avg / Median</td>
+          <td><span id="avgPpsf">—</span> / <span id="medianPpsf">—</span></td>
+          <td></td>
+        </tr>
+      </tfoot>
+    </table>
+    <div class="actions" style="margin-top:12px;">
+      <button class="inline-btn" id="addCompBtn" type="button">+ Add Comp</button>
+    </div>
+    <div class="mao-box" style="margin-top:14px;">
+      <div class="metric"><span class="lbl">Comps Used</span><span class="val" id="compCount">0</span></div>
+      <div class="metric"><span class="lbl">Suggested ARV (avg $/sf × subject sf)</span><span class="val" id="suggestedArv">—</span></div>
+      <button class="inline-btn gold" id="useArvBtn" type="button">Use Suggested ARV →</button>
+    </div>
+  </div>
+
+  <div class="grid">
+
+    <div class="card">
+      <h2><span class="num">3</span> Acquisition, Rehab &amp; ARV</h2>
+      <div class="field-row">
+        <div class="field"><label>Purchase Price</label><input type="number" id="purchasePrice" value="180000" min="0"></div>
+        <div class="field"><label>Rehab Budget</label><input type="number" id="rehabBudget" value="40000" min="0"></div>
+        <div class="field narrow"><label>Contingency Buffer %</label><input type="number" id="contingencyPct" value="10" min="0" step="0.5"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>After Repair Value (ARV)</label><input type="number" id="arvField" value="280000" min="0"></div>
+        <div class="field narrow"><label>Hold Period (months)</label><input type="number" id="holdMonths" value="6" min="0"></div>
+      </div>
+      <p class="hint">Contingency Buffer covers change orders / rehab overages beyond the budget above. It's kept separate so the lender's holdback cap (based on the Rehab Budget) isn't affected — it shows as its own line in the Full Deal Breakdown.</p>
+
+      <div class="field-row" style="margin-top:6px;">
+        <div class="field narrow"><label>Holding Cost / Month</label><input type="number" id="holdCostMonth" value="350" min="0"></div>
+        <div class="field"><span class="hint" style="margin-top:22px;">Override directly, or itemize below and use the itemized total.</span></div>
+      </div>
+
+      <details class="settings" style="margin-top:10px;">
+        <summary>Itemize Monthly Carrying Costs (optional)</summary>
+        <div class="field-row" style="margin-top:8px;">
+          <div class="field narrow"><label>Property Taxes / Mo</label><input type="number" id="itemTaxesMonth" value="0" min="0"></div>
+          <div class="field narrow"><label>Vacant Prop. Insurance / Mo</label><input type="number" id="itemVacInsMonth" value="0" min="0"></div>
+          <div class="field narrow"><label>Utilities / Mo</label><input type="number" id="itemUtilMonth" value="0" min="0"></div>
+          <div class="field narrow"><label>HOA Dues / Mo</label><input type="number" id="itemHoaMonth" value="0" min="0"></div>
+          <div class="field narrow"><label>Lawn/Snow &amp; Security / Mo</label><input type="number" id="itemLawnSecMonth" value="0" min="0"></div>
+        </div>
+        <div class="mao-box" style="margin-top:10px;">
+          <div class="metric"><span class="lbl">Itemized Total / Mo</span><span class="val" id="itemizedTotalDisplay">$0</span></div>
+          <button class="inline-btn gold" id="useItemizedBtn" type="button">Use Itemized Total →</button>
+        </div>
+      </details>
+    </div>
+
+    <div class="card">
+      <h2><span class="num">4</span> Inspection, Appraisal, Closing &amp; Sale-Prep Fees</h2>
+      <div class="field-row">
+        <div class="field">
+          <label>Home Inspection Fee</label>
+          <input type="number" id="inspectionFee" value="325" min="0">
+          <span class="hint" id="inspectionHint"></span>
+        </div>
+        <div class="field" style="flex:0 0 auto;align-self:flex-end;">
+          <button class="inline-btn" id="estInspectionBtn" type="button">Estimate from features</button>
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>Appraisal Fee</label>
+          <input type="number" id="appraisalFee" value="450" min="0">
+          <span class="hint" id="appraisalHint"></span>
+        </div>
+        <div class="field" style="flex:0 0 auto;align-self:flex-end;">
+          <button class="inline-btn" id="estAppraisalBtn" type="button">Estimate from features</button>
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field narrow"><label>Realtor Fee — Purchase %</label><input type="number" id="realtorPurchasePct" value="0" min="0" step="0.1"></div>
+        <div class="field narrow"><label>Realtor Fee — Sale %</label><input type="number" id="realtorSalePct" value="6" min="0" step="0.1"></div>
+        <div class="field narrow"><label>Purchase Closing %</label><input type="number" id="purchaseClosingPct" value="1.5" min="0" step="0.1"></div>
+        <div class="field narrow"><label>Sale Closing %</label><input type="number" id="saleClosingPct" value="1" min="0" step="0.1"></div>
+      </div>
+      <p class="hint">Purchase % applies to Purchase Price; Sale % and Sale Closing % apply to ARV. Estimates are editable — confirm with your inspector, appraiser and agent.</p>
+
+      <button type="button" id="feesToggleBtn" style="display:flex;align-items:center;gap:6px;background:none;border:1px solid var(--line);border-radius:5px;padding:5px 12px;font-size:12.5px;color:var(--muted);cursor:pointer;margin-top:8px;margin-bottom:4px;">
+        <span>⚙️</span><span id="feesToggleBtnLabel">Additional Fees</span>
+      </button>
+      <div id="feesPanel" style="display:none;">
+        <div class="field-row" style="margin-top:4px;">
+          <div class="field narrow"><label>Title Insurance — Purchase</label><input type="number" id="titleInsPurchase" value="0" min="0"></div>
+          <div class="field narrow"><label>Title Insurance — Sale</label><input type="number" id="titleInsSale" value="0" min="0"></div>
+          <div class="field narrow"><label>Transfer/Recording Tax %</label><input type="number" id="transferTaxPct" value="0" min="0" step="0.1"></div>
+          <div class="field narrow"><label>Survey Fee</label><input type="number" id="surveyFee" value="0" min="0"></div>
+          <div class="field narrow"><label>Escrow Fee</label><input type="number" id="escrowFee" value="0" min="0"></div>
+        </div>
+        <p class="hint">Transfer/Recording Tax % applies to Purchase Price. These are typically due at purchase or sale closing — confirm exact amounts with your title company for your county.</p>
+
+        <div class="field-row" style="margin-top:10px;">
+          <div class="field narrow"><label>Staging Cost</label><input type="number" id="stagingCost" value="0" min="0"></div>
+          <div class="field narrow"><label>MLS / Marketing Fee</label><input type="number" id="marketingFee" value="0" min="0"></div>
+          <div class="field narrow"><label>Buyer Concession % of ARV</label><input type="number" id="buyerConcessionPct" value="0" min="0" step="0.1"></div>
+        </div>
+        <p class="hint">Staging, marketing, and any buyer closing-cost concession you offer to move the sale — all added to total project cost.</p>
+      </div><!-- /feesPanel -->
+    </div>
+
+    <div class="card">
+      <h2><span class="num">5</span> 60% / 70% Rule</h2>
+      <p class="sub">Max Allowable Offer (MAO) = ARV × Rule % − Rehab Budget</p>
+      <div class="radio-group">
+        <label class="opt"><input type="radio" name="rule" value="70" checked> 70% Rule (light rehab)</label>
+        <label class="opt"><input type="radio" name="rule" value="60"> 60% Rule (heavy rehab)</label>
+        <label class="opt"><input type="radio" name="rule" value="custom"> Custom</label>
+        <input type="number" id="customRulePct" value="65" min="1" max="100" style="width:70px;display:none;">
+      </div>
+      <div class="mao-box">
+        <div class="metric"><span class="lbl">Rule Used</span><span class="val" id="ruleUsedPct">70%</span></div>
+        <div class="metric"><span class="lbl">Max Allowable Offer</span><span class="val" id="maoVal">$0</span></div>
+        <div class="metric"><span class="lbl">vs. Purchase Price</span><span class="val" id="maoDelta">—</span></div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="card full">
+    <h2><span class="num">6</span> Financing — GoingFlip Fix &amp; Flip Program</h2>
+    <p class="sub">Reflects GoingFlip's RTL Fix &amp; Flip underwriting matrix (6/22/2026) — experience-tier leverage caps, real rates/points, fee schedule and reserve requirements. Bridge and GUC terms are not used here.</p>
+    <div class="toggle-row">
+      <label class="switch"><input type="checkbox" id="financeToggle"><span class="slider"></span></label>
+      <span style="font-size:13.5px;font-weight:600;">This project will be financed</span>
+    </div>
+    <div id="financePanel">
+      <button type="button" id="loanOptsToggle" style="display:flex;align-items:center;gap:6px;background:none;border:1px solid var(--line);border-radius:5px;padding:5px 12px;font-size:12.5px;color:var(--muted);cursor:pointer;margin-bottom:8px;">
+        <span>⚙️</span><span id="loanOptsToggleLabel">Loan Options</span>
+      </button>
+      <div id="loanOptsPanel" style="display:none;">
+        <div class="field-row">
+          <div class="field">
+            <label>Borrower Experience Tier</label>
+            <select id="expTier">
+              <option value="inst">Institutional 10+ ($10M+ track record)</option>
+              <option value="exp" selected>Experienced 3–9 ($5M+ track record)</option>
+              <option value="none">0–2 / No Experience</option>
+            </select>
+            <p class="hint" style="margin-top:4px;">Tier requires BOTH the stated deal count AND a verified dollar track record (Institutional $10M+, Experienced $5M+). Until verified, GoingFlip quotes the conservative 0–2/No Experience tier.</p>
+          </div>
+          <div class="field">
+            <label>Borrower FICO</label>
+            <select id="ficoBucket">
+              <option value="680">680+</option>
+              <option value="660">660–679 (-10% leverage, Experienced+ only, no cash-out)</option>
+              <option value="below660">Below 660 (ineligible)</option>
+            </select>
+          </div>
+          <div class="field"><label>Appraised As-Is Value (AIV)</label><input type="number" id="aivAppraisal" value="180000" min="0"></div>
+        </div>
+        <p class="hint">As-Is Value used for underwriting = lesser of Purchase Price or this appraised AIV.</p>
+        <div class="field-row">
+          <label class="opt" style="display:flex;align-items:center;gap:6px;font-weight:500;text-transform:none;letter-spacing:0;color:var(--ink);font-size:13px;"><input type="checkbox" id="isCondo" style="width:15px;height:15px;accent-color:var(--navy);"> Condo</label>
+          <label class="opt" style="display:flex;align-items:center;gap:6px;font-weight:500;text-transform:none;letter-spacing:0;color:var(--ink);font-size:13px;"><input type="checkbox" id="isMultiFamily" style="width:15px;height:15px;accent-color:var(--navy);"> Multi-family (5+ units)</label>
+          <label class="opt" style="display:flex;align-items:center;gap:6px;font-weight:500;text-transform:none;letter-spacing:0;color:var(--ink);font-size:13px;"><input type="checkbox" id="isFLZip" style="width:15px;height:15px;accent-color:var(--navy);"> FL West Coast zip code</label>
+          <label class="opt" style="display:flex;align-items:center;gap:6px;font-weight:500;text-transform:none;letter-spacing:0;color:var(--ink);font-size:13px;"><input type="checkbox" id="decliningMarket" style="width:15px;height:15px;accent-color:var(--navy);"> Declining market (per appraisal)</label>
+        </div>
+        <div class="field-row">
+          <label class="opt" style="display:flex;align-items:center;gap:6px;font-weight:500;text-transform:none;letter-spacing:0;color:var(--ink);font-size:13px;"><input type="checkbox" id="glaIncrease25" style="width:15px;height:15px;accent-color:var(--navy);"> Work increases GLA by 25%+ (forces Heavy)</label>
+          <label class="opt" style="display:flex;align-items:center;gap:6px;font-weight:500;text-transform:none;letter-spacing:0;color:var(--ink);font-size:13px;"><input type="checkbox" id="usingGC" style="width:15px;height:15px;accent-color:var(--navy);"> Using a non-owner GC (+5% contingency)</label>
+          <div class="field narrow"><label>Interest Reserve %</label><input type="number" id="irPct" value="0" min="0" max="100" step="0.1"></div>
+          <div class="field narrow"><label>Loan Amt Override</label><input type="number" id="loanAmountManual" value="0" min="0"></div>
+          <div class="field narrow"><label>Origination Fee % Override</label><input type="number" id="origFeeOverride" value="0" min="0" max="4" step="0.05" placeholder="1.5"></div>
+        </div>
+        <p class="hint">Standard origination fee: 1.5% (0–9 experience tiers) / 1.0% (Institutional 10+), per GoingFlip's pricing matrix. Leave the override at 0 to use the tier default, or enter a special discounted rate (e.g. 0.5%) when GoingFlip offers one. Program max is 4%.</p>
+      </div><!-- /loanOptsPanel -->
+
+      <div class="mao-box">
+        <div class="metric"><span class="lbl">Budget / AIV</span><span class="val" id="budgetRatioDisplay">0%</span></div>
+        <div class="metric"><span class="lbl">Classification</span><span class="val" id="classDisplay">—</span></div>
+        <div class="metric"><span class="lbl">LTAIV Cap</span><span class="val" id="capLtaivDisplay">0%</span></div>
+        <div class="metric"><span class="lbl">LTC Cap</span><span class="val" id="capLtcDisplay">0%</span></div>
+        <div class="metric"><span class="lbl">LTARV Cap</span><span class="val" id="capLtarvDisplay">0%</span></div>
+      </div>
+      <div class="warn" id="eligibilityWarn" style="display:none;"></div>
+
+      <div class="field-row" style="margin-top:14px;">
+        <div class="field narrow"><label>Term</label>
+          <select id="loanTerm">
+            <option value="12">12 months</option>
+            <option value="18" selected>18 months</option>
+            <option value="24">24 months (heavy/exception)</option>
+          </select>
+        </div>
+        <div class="field narrow"><label>Loan Start Date</label><input type="date" id="loanStartDate"></div>
+      </div>
+      <p class="hint">If the hold period runs past the Term above, a Loan Extension Fee is added automatically using the rate set in Program Parameters (admin only).</p>
+
+      <div class="mao-box">
+        <div class="metric"><span class="lbl">Day 1 Loan Amount</span><span class="val" id="day1Display">$0</span></div>
+        <div class="metric"><span class="lbl">Holdback (Rehab Draws)</span><span class="val" id="holdbackDisplay">$0</span></div>
+        <div class="metric"><span class="lbl">Total Loan Amount</span><span class="val" id="tlaDisplay">$0</span></div>
+        <div class="metric"><span class="lbl">Rate (Annual)</span><span class="val" id="rateDisplay">0%</span></div>
+        <div class="metric"><span class="lbl">Origination Points</span><span class="val" id="ptsDisplay">0%</span></div>
+      </div>
+
+      <div class="field" id="day1SplitField" style="margin-top:10px;">
+        <label>Day 1 / Holdback Allocation</label>
+        <input type="range" id="day1SplitPct" min="0" max="100" step="1" value="100" style="width:100%;">
+        <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-top:2px;">
+          <span>More Holdback</span>
+          <span id="day1SplitPctDisplay" style="font-weight:700;color:var(--navy);">100% to Day 1</span>
+          <span>More Day 1</span>
+        </div>
+        <p class="hint" id="day1SplitHint" style="margin-top:4px;"></p>
+      </div>
+
+      <div class="toggle-row" style="margin-top:14px;">
+        <label class="switch"><input type="checkbox" id="useDrawSchedule"><span class="slider"></span></label>
+        <span style="font-size:13.5px;font-weight:600;">Use actual draw dates for precise interest (instead of the average-balance estimate)</span>
+      </div>
+      <div id="drawSchedulePanel" style="display:none;">
+        <p class="hint">Holdback funds don't accrue interest until they're actually disbursed. Log each draw's date and amount and interest will be calculated per-diem from that date forward — the Day 1 amount still accrues from the Loan Start Date above.</p>
+        <table>
+          <thead><tr><th style="width:45%">Draw Date</th><th>Amount</th><th></th></tr></thead>
+          <tbody id="drawsBody"></tbody>
+          <tfoot>
+            <tr class="comp-foot">
+              <td>Total Drawn</td>
+              <td><span id="totalDrawnDisplay">$0</span></td>
+              <td></td>
+            </tr>
+          </tfoot>
+        </table>
+        <div class="actions" style="margin-top:8px;">
+          <button class="inline-btn" id="addDrawBtn" type="button">+ Add Draw</button>
+        </div>
+        <div class="warn" id="drawOverageWarn" style="display:none;margin-top:8px;"></div>
+        <p class="hint" id="drawFeeRateHint">Each draw is charged a Residential Draw Inspection fee (GoingFlip: $300 if the rehab budget is under $2M, $500 at/above $2M) plus a wire fee — both set in Program Parameters (admin only) and included in "Draw/Wire/Ext. Fees" below.</p>
+      </div>
+
+      <p class="hint">Modeled as fixed-rate, interest-only with a balloon payment of the Total Loan Amount at maturity — standard for GoingFlip's Fix &amp; Flip program. By default, Total Interest assumes the Day 1 balance accrues for the full hold period and the holdback accrues from an average half-balance (draws spread over the hold period). Turn on the draw schedule above for precise, disbursed-balance interest instead.</p>
+      <div class="mao-box">
+        <div class="metric"><span class="lbl">Day 1 Monthly Interest</span><span class="val" id="day1MonthlyIODisplay">$0</span></div>
+        <div class="metric"><span class="lbl">Monthly IO Payment (fully drawn)</span><span class="val" id="monthlyIODisplay">$0</span></div>
+        <div class="metric"><span class="lbl">Total Interest (hold period)</span><span class="val" id="totalInterestDisplay">$0</span></div>
+        <div class="metric"><span class="lbl">Origination Fee</span><span class="val" id="pointsCostDisplay">$0</span></div>
+        <div class="metric"><span class="lbl">Lender Fees</span><span class="val" id="lenderFeesDisplay">$0</span></div>
+        <div class="metric"><span class="lbl">Draw/Wire/Ext. Fees</span><span class="val" id="drawFeesDisplay">$0</span></div>
+        <div class="metric"><span class="lbl">Total Loan Closing Costs</span><span class="val" id="closingCostsLoanDisplay">$0</span></div>
+        <div class="metric"><span class="lbl">Balloon Payment Due</span><span class="val" id="balloonDisplay">$0</span></div>
+      </div>
+      <div class="warn" id="termWarning" style="display:none;"></div>
+      <div class="warn" id="sizeWarning" style="display:none;"></div>
+
+      <p class="sub" style="margin:16px 0 6px;">Liquidity Reserve Required at Closing</p>
+      <div class="mao-box">
+        <div class="metric"><span class="lbl">Down Payment</span><span class="val" id="downPaymentDisplay">$0</span></div>
+        <div class="metric"><span class="lbl" id="sixMoReserveLabel">6-Mo Interest (less IR)</span><span class="val" id="sixMoReserveDisplay">$0</span></div>
+        <div class="metric"><span class="lbl">Unfinanced Rehab</span><span class="val" id="unfinancedRehabDisplay">$0</span></div>
+        <div class="metric"><span class="lbl">Total Liquidity Required</span><span class="val" id="liquidityReqDisplay">$0</span></div>
+      </div>
+      <p class="hint" id="overlayNotes"></p>
+
+      <details class="settings">
+        <summary>Program Parameters (Admin Only)</summary>
+
+        <div class="pin-gate" id="paramsLock">
+          <p class="hint" style="margin:0 0 10px;">These values drive every financing calculation above. Editing them is restricted to admins — enter the PIN to unlock.</p>
+          <input type="password" id="adm_pinInput" inputmode="numeric" maxlength="8" placeholder="PIN">
+          <button type="button" class="inline-btn gold" id="unlockBtn">Unlock</button>
+          <p class="pin-err" id="pinError">Incorrect PIN.</p>
+        </div>
+
+        <div id="paramsContent" style="display:none;">
+        <div class="admin-row">
+          <p class="hint" style="margin:0;">Changes save automatically in this browser and apply to every deal you open here. Use "Reset to GoingFlip Defaults" to undo all changes.</p>
+          <button type="button" class="inline-btn" id="lockBtn">Lock Settings</button>
+        </div>
+
+        <p class="sub" style="margin:14px 0 4px;font-weight:700;color:var(--navy-light);">Rate &amp; Origination Fee by Tier</p>
+        <table class="param-table">
+          <thead><tr><th style="text-align:left;">Tier</th><th>Rate %</th><th>Points %</th></tr></thead>
+          <tbody>
+            <tr><td>Institutional 10+</td><td><input type="number" id="p_rate_inst" step="0.001"></td><td><input type="number" id="p_pts_inst" step="0.05"></td></tr>
+            <tr><td>Experienced 3–9</td><td><input type="number" id="p_rate_exp" step="0.001"></td><td><input type="number" id="p_pts_exp" step="0.05"></td></tr>
+            <tr><td>0–2 / No Experience</td><td><input type="number" id="p_rate_none" step="0.001"></td><td><input type="number" id="p_pts_none" step="0.05"></td></tr>
+          </tbody>
+        </table>
+
+        <p class="sub" style="margin:14px 0 4px;font-weight:700;color:var(--navy-light);">Leverage Caps by Tier &amp; Classification (%)</p>
+        <table class="param-table">
+          <thead><tr><th style="text-align:left;">Tier</th><th colspan="3">Light — LTAIV / LTC / LTARV</th><th colspan="3">Heavy — LTAIV / LTC / LTARV</th></tr></thead>
+          <tbody>
+            <tr>
+              <td>Institutional 10+</td>
+              <td><input type="number" id="p_cap_inst_light_ltaiv"></td><td><input type="number" id="p_cap_inst_light_ltc"></td><td><input type="number" id="p_cap_inst_light_ltarv"></td>
+              <td><input type="number" id="p_cap_inst_heavy_ltaiv"></td><td><input type="number" id="p_cap_inst_heavy_ltc"></td><td><input type="number" id="p_cap_inst_heavy_ltarv"></td>
+            </tr>
+            <tr>
+              <td>Experienced 3–9</td>
+              <td><input type="number" id="p_cap_exp_light_ltaiv"></td><td><input type="number" id="p_cap_exp_light_ltc"></td><td><input type="number" id="p_cap_exp_light_ltarv"></td>
+              <td><input type="number" id="p_cap_exp_heavy_ltaiv"></td><td><input type="number" id="p_cap_exp_heavy_ltc"></td><td><input type="number" id="p_cap_exp_heavy_ltarv"></td>
+            </tr>
+            <tr>
+              <td>0–2 / No Experience</td>
+              <td><input type="number" id="p_cap_none_light_ltaiv"></td><td><input type="number" id="p_cap_none_light_ltc"></td><td><input type="number" id="p_cap_none_light_ltarv"></td>
+              <td colspan="3" style="text-align:left;padding-left:8px;">
+                <label style="display:inline-flex;align-items:center;gap:5px;font-weight:500;font-size:11.5px;color:var(--ink);">
+                  <input type="checkbox" id="p_none_heavy_offered" style="width:14px;height:14px;accent-color:var(--navy);"> Offer Heavy to this tier
+                </label>
+                <span id="p_none_heavy_inputs" style="display:inline-flex;gap:4px;margin-left:6px;">
+                  <input type="number" id="p_cap_none_heavy_ltaiv" style="width:48px;" placeholder="LTAIV">
+                  <input type="number" id="p_cap_none_heavy_ltc" style="width:48px;" placeholder="LTC">
+                  <input type="number" id="p_cap_none_heavy_ltarv" style="width:48px;" placeholder="LTARV">
+                </span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        <p class="sub" style="margin:14px 0 4px;font-weight:700;color:var(--navy-light);">Overlay Adjustments</p>
+        <div class="param-grid">
+          <div class="param-field"><label>FICO 660–679 Haircut (pts off caps)</label><input type="number" id="p_ov_fico660Haircut"></div>
+          <div class="param-field"><label>Condo Haircut (pts off caps)</label><input type="number" id="p_ov_condoHaircut"></div>
+          <div class="param-field"><label>Condo LTV Threshold %</label><input type="number" id="p_ov_condoLtvThreshold"></div>
+          <div class="param-field"><label>Condo Rate, Above Threshold %</label><input type="number" id="p_ov_condoRateHigh" step="0.001"></div>
+          <div class="param-field"><label>Condo Rate, At/Below (Exp+) %</label><input type="number" id="p_ov_condoRateLowExp" step="0.001"></div>
+          <div class="param-field"><label>Condo Rate, At/Below (None) %</label><input type="number" id="p_ov_condoRateLowNone" step="0.001"></div>
+          <div class="param-field"><label>Multi-Family LTAIV/LTC Cap %</label><input type="number" id="p_ov_mfCapPct"></div>
+          <div class="param-field"><label>Multi-Family Rate Adder %</label><input type="number" id="p_ov_mfRateAdder" step="0.001"></div>
+          <div class="param-field"><label>FL Zip LTARV Cap, Base %</label><input type="number" id="p_ov_flZipLtarvBase"></div>
+          <div class="param-field"><label>FL Zip LTARV Cap, w/ IR %</label><input type="number" id="p_ov_flZipLtarvIR"></div>
+          <div class="param-field"><label>FL Zip LTAIV Cap, Base %</label><input type="number" id="p_ov_flZipLtaivBase"></div>
+          <div class="param-field"><label>FL Zip LTAIV Cap, w/ IR %</label><input type="number" id="p_ov_flZipLtaivIR"></div>
+          <div class="param-field"><label>Declining Market Haircut (pts)</label><input type="number" id="p_ov_decliningHaircut"></div>
+          <div class="param-field"><label>Large Loan Rate Floor %</label><input type="number" id="p_ov_bigLoanRateFloor" step="0.001"></div>
+          <div class="param-field"><label>Large Loan Threshold ($)</label><input type="number" id="p_ov_bigLoanThreshold"></div>
+        </div>
+
+        <p class="sub" style="margin:14px 0 4px;font-weight:700;color:var(--navy-light);">Lender Fee Schedule (by Total Loan Amount)</p>
+        <table class="param-table">
+          <thead><tr><th style="text-align:left;">Bracket Up To ($)</th><th>Underwriting</th><th>Processing</th><th>Servicing</th><th>Legal</th></tr></thead>
+          <tbody>
+            <tr><td><input type="number" id="p_fee_b1_max" style="width:88px;"></td><td><input type="number" id="p_fee_b1_uw"></td><td><input type="number" id="p_fee_b1_proc"></td><td><input type="number" id="p_fee_b1_serv"></td><td><input type="number" id="p_fee_b1_legal"></td></tr>
+            <tr><td><input type="number" id="p_fee_b2_max" style="width:88px;"></td><td><input type="number" id="p_fee_b2_uw"></td><td><input type="number" id="p_fee_b2_proc"></td><td><input type="number" id="p_fee_b2_serv"></td><td><input type="number" id="p_fee_b2_legal"></td></tr>
+            <tr><td><input type="number" id="p_fee_b3_max" style="width:88px;"></td><td><input type="number" id="p_fee_b3_uw"></td><td><input type="number" id="p_fee_b3_proc"></td><td><input type="number" id="p_fee_b3_serv"></td><td><input type="number" id="p_fee_b3_legal"></td></tr>
+            <tr><td>Above (no cap)</td><td><input type="number" id="p_fee_b4_uw"></td><td><input type="number" id="p_fee_b4_proc"></td><td><input type="number" id="p_fee_b4_serv"></td><td><input type="number" id="p_fee_b4_legal"></td></tr>
+          </tbody>
+        </table>
+
+        <p class="sub" style="margin:14px 0 4px;font-weight:700;color:var(--navy-light);">Heavy Fix &amp; Flip Add-Ons, Loan Limits &amp; Reserves</p>
+        <div class="param-grid">
+          <div class="param-field"><label>Heavy: Feasibility Review ($)</label><input type="number" id="p_heavyFee_feasibility"></div>
+          <div class="param-field"><label>Heavy: Permit Validation ($)</label><input type="number" id="p_heavyFee_permit"></div>
+          <div class="param-field"><label>Min Loan Size ($)</label><input type="number" id="p_loanLimit_min"></div>
+          <div class="param-field"><label>Max Loan Size ($)</label><input type="number" id="p_loanLimit_max"></div>
+          <div class="param-field"><label>Max Term, Light (mo)</label><input type="number" id="p_loanLimit_termLight"></div>
+          <div class="param-field"><label>Max Term, Heavy (mo)</label><input type="number" id="p_loanLimit_termHeavy"></div>
+          <div class="param-field"><label>Reserve: Months of Interest</label><input type="number" id="p_reserve_months"></div>
+        </div>
+
+        <p class="sub" style="margin:14px 0 4px;font-weight:700;color:var(--navy-light);">Draw, Inspection &amp; Extension Fees</p>
+        <div class="param-grid">
+          <div class="param-field"><label>Draw Inspection — Budget Threshold ($)</label><input type="number" id="p_draw_threshold"></div>
+          <div class="param-field"><label>Draw Inspection Fee, Under Threshold ($)</label><input type="number" id="p_draw_feeUnder"></div>
+          <div class="param-field"><label>Draw Inspection Fee, At/Over Threshold ($)</label><input type="number" id="p_draw_feeOver"></div>
+          <div class="param-field"><label>Wire Fee, Per Draw ($)</label><input type="number" id="p_draw_wireFee"></div>
+          <div class="param-field"><label>Loan Extension Fee ($)</label><input type="number" id="p_draw_extensionFee"></div>
+        </div>
+        <p class="hint">Per GoingFlip's fee schedule: Residential Draw Inspection is $300 when the rehab/construction budget is under $2,000,000 and $500 at or above that — applies to both Light and Heavy Fix &amp; Flip. Wire fee and extension fee aren't fixed in the program guide — set them to match what your lender/title company actually charges.</p>
+
+        <p class="sub" style="margin:14px 0 4px;font-weight:700;color:var(--navy-light);">Rehab Contingency Minimums</p>
+        <div class="param-grid">
+          <div class="param-field"><label>Light Fix &amp; Flip — Min Contingency %</label><input type="number" id="p_cont_light" step="0.5"></div>
+          <div class="param-field"><label>Heavy Fix &amp; Flip / GUC — Min Contingency %</label><input type="number" id="p_cont_heavy" step="0.5"></div>
+        </div>
+        <p class="hint">Per GoingFlip's overlays: Light rehab loans require a minimum 5% contingency; Heavy rehab and Ground-Up Construction loans require a minimum 10% contingency. The calculator warns if a deal's Contingency Buffer % (Card 3) falls below the minimum for its classification.</p>
+
+        <div class="actions" style="margin:18px 0 0;">
+          <button type="button" class="inline-btn" id="resetParamsBtn">Reset to GoingFlip Defaults</button>
+        </div>
+        <p class="hint">Changes save automatically in this browser as you type — no separate save step needed.</p>
+
+        <div class="pin-change">
+          <p class="sub" style="margin:0 0 6px;font-weight:700;color:var(--navy-light);">Change Admin PIN</p>
+          <input type="password" id="adm_newPin1" inputmode="numeric" maxlength="8" placeholder="New PIN">
+          <input type="password" id="adm_newPin2" inputmode="numeric" maxlength="8" placeholder="Confirm PIN">
+          <button type="button" class="inline-btn" id="updatePinBtn">Update PIN</button>
+          <p class="hint" id="pinUpdateMsg" style="display:none;"></p>
+        </div>
+        </div>
+      </details>
+    </div>
+  </div>
+
+  <div class="card full">
+    <h2><span class="num">7</span> Full Deal Breakdown</h2>
+    <table class="breakdown">
+      <tr class="section-label"><td colspan="2">Costs</td></tr>
+      <tr><td>Purchase Price</td><td class="amt" id="b-purchase">$0</td></tr>
+      <tr><td>Purchase Closing Costs</td><td class="amt" id="b-pclose">$0</td></tr>
+      <tr><td>Realtor Fee (Purchase)</td><td class="amt" id="b-rpurchase">$0</td></tr>
+      <tr><td>Title, Transfer &amp; Escrow (Purchase)</td><td class="amt" id="b-purchasetitle">$0</td></tr>
+      <tr><td>Rehab Budget</td><td class="amt" id="b-rehab">$0</td></tr>
+      <tr><td>Rehab Contingency Buffer</td><td class="amt" id="b-contingency">$0</td></tr>
+      <tr><td>Home Inspection Fee</td><td class="amt" id="b-inspect">$0</td></tr>
+      <tr><td>Appraisal Fee</td><td class="amt" id="b-appraisal">$0</td></tr>
+      <tr><td>Holding Costs</td><td class="amt" id="b-holding">$0</td></tr>
+      <tr><td>Loan Interest (IO, hold period)</td><td class="amt" id="b-fininterest">$0</td></tr>
+      <tr><td>Loan Points, Lender Fees &amp; Closing</td><td class="amt" id="b-finfees">$0</td></tr>
+      <tr><td>Title Insurance (Sale)</td><td class="amt" id="b-saletitle">$0</td></tr>
+      <tr><td>Staging, Marketing &amp; Buyer Concession</td><td class="amt" id="b-saleextras">$0</td></tr>
+      <tr><td>Realtor Fee (Sale)</td><td class="amt" id="b-rsale">$0</td></tr>
+      <tr><td>Sale Closing Costs</td><td class="amt" id="b-sclose">$0</td></tr>
+      <tr class="total"><td>Total All-In Project Cost</td><td class="amt" id="b-total">$0</td></tr>
+      <tr class="section-label"><td colspan="2">Outcome</td></tr>
+      <tr><td>After Repair Value (ARV)</td><td class="amt" id="b-arv">$0</td></tr>
+      <tr class="profit"><td>Net Profit</td><td class="amt" id="b-profit">$0</td></tr>
+      <tr><td>Cash Invested</td><td class="amt" id="b-cash">$0</td></tr>
+      <tr><td>Cash-on-Cash ROI</td><td class="amt" id="b-roi">0%</td></tr>
+      <tr><td>Annualized ROI</td><td class="amt" id="b-aroi">0%</td></tr>
+    </table>
+    <div class="field-row" style="margin-top:18px;">
+      <div class="field narrow"><label>Target Annualized ROI %</label><input type="number" id="targetRoi" value="20" min="0"></div>
+      <div class="field" style="flex:2;"><span class="hint" style="margin-top:22px;" id="verdictExplain"></span></div>
+    </div>
+  </div>
+
+  <div class="card full">
+    <h2><span class="num">8</span> Actuals / Closeout — Feasibility Check</h2>
+    <p class="sub">Once the deal closes, log what actually happened and see how it stacks up against your original projection.</p>
+    <div class="toggle-row">
+      <label class="switch"><input type="checkbox" id="dealClosed"><span class="slider"></span></label>
+      <span style="font-size:13.5px;font-weight:600;">This deal has closed (enter actuals)</span>
+    </div>
+    <div id="closeoutFields" style="display:none;">
+      <div class="field-row">
+        <div class="field narrow"><label>Actual Sale Price</label><input type="number" id="actualSalePrice" value="0" min="0"></div>
+        <div class="field narrow"><label>Actual Sale Date</label><input type="date" id="actualSaleDate"></div>
+        <div class="field narrow"><label>Actual Rehab Spent</label><input type="number" id="actualRehabSpent" value="0" min="0"></div>
+        <div class="field narrow"><label>Other Cost Variance (+/−)</label><input type="number" id="actualOtherAdj" value="0"></div>
+      </div>
+      <p class="hint">Leave Actual Sale Price / Rehab Spent at 0 to fall back to your projected ARV / Rehab Budget. Other Cost Variance captures anything else that ran over (positive) or under (negative) plan.</p>
+    </div>
+    <div class="mao-box" style="margin-top:14px;">
+      <div class="metric"><span class="lbl">Projected Net Profit</span><span class="val" id="projProfitCompare">$0</span></div>
+      <div class="metric"><span class="lbl">Actual Net Profit</span><span class="val" id="actualProfitCompare">$0</span></div>
+      <div class="metric"><span class="lbl">Variance</span><span class="val" id="profitVarianceCompare">$0</span></div>
+    </div>
+    <div class="mao-box">
+      <div class="metric"><span class="lbl">Projected ROI</span><span class="val" id="projRoiCompare">0%</span></div>
+      <div class="metric"><span class="lbl">Actual ROI</span><span class="val" id="actualRoiCompare">0%</span></div>
+      <div class="metric"><span class="lbl">Projected Annualized ROI</span><span class="val" id="projAroiCompare">0%</span></div>
+      <div class="metric"><span class="lbl">Actual Annualized ROI</span><span class="val" id="actualAroiCompare">0%</span></div>
+    </div>
+  </div>
+
+  <div class="actions">
+    <button class="inline-btn" id="exportBtn" type="button">Export Analysis (JSON)</button>
+    <button class="inline-btn" id="importBtn" type="button">Import Analysis (JSON)</button>
+    <input type="file" id="importFile" accept=".json" style="display:none;">
+    <button class="inline-btn" id="printBtn" type="button">Print / Save as PDF</button>
+    <button class="inline-btn" id="resetBtn" type="button" style="color:#a8302b;border-color:#a8302b;">Reset Form</button>
+  </div>
+
+</main>
+
+<footer>
+  All fees, rates and rule percentages are editable estimates meant to frame the conversation — verify actual inspection/appraisal quotes, lender terms, and comparable sales with licensed professionals before making an offer. GoingFlip does not guarantee loan terms shown here; contact your loan officer for an actual quote.
+</footer>
+
+<script>
+function $(id){return document.getElementById(id);}
+function num(id){const v=parseFloat($(id).value);return isNaN(v)?0:v;}
+function fmtMoney(v){
+  const sign = v<0 ? "-" : "";
+  return sign + "$" + Math.abs(Math.round(v)).toLocaleString("en-US");
+}
+function fmtPct(v){return (Math.round(v*10)/10).toLocaleString("en-US")+"%";}
+
+/* ---------- Editable Program Parameters (persisted in this browser) ---------- */
+const PARAMS_DEFAULT = {
+  matrix: {
+    inst: { light:{ltaiv:90, ltc:95, ltarv:75}, heavy:{ltaiv:85, ltc:85, ltarv:75} },
+    exp:  { light:{ltaiv:85, ltc:90, ltarv:75}, heavy:{ltaiv:85, ltc:85, ltarv:70} },
+    none: { light:{ltaiv:75, ltc:80, ltarv:70}, heavy:null }
+  },
+  tierInfo: {
+    inst:{rate:8.500, pts:1.0},
+    exp: {rate:8.875, pts:1.5},
+    none:{rate:9.375, pts:1.5}
+  },
+  overlays: {
+    fico660Haircut: 10,
+    condoHaircut: 10,
+    condoLtvThreshold: 65,
+    condoRateHigh: 9.75,
+    condoRateLowExp: 9.25,
+    condoRateLowNone: 9.375,
+    mfCapPct: 80,
+    mfRateAdder: 1,
+    flZipLtarvBase: 55, flZipLtarvIR: 60,
+    flZipLtaivBase: 60, flZipLtaivIR: 65,
+    decliningHaircut: 5,
+    bigLoanRateFloor: 8.875,
+    bigLoanThreshold: 5000000
+  },
+  feeSchedule: [
+    {max:500000,  uw:750,  proc:350, serv:250, legal:635},
+    {max:1500000, uw:999,  proc:500, serv:350, legal:635},
+    {max:3000000, uw:1500, proc:750, serv:500, legal:635},
+    {max:null,    uw:1600, proc:800, serv:500, legal:635}
+  ],
+  heavyFees: { feasibility:700, permit:300 },
+  loanLimits: { min:125000, max:5000000, maxTermLight:18, maxTermHeavy:24 },
+  reserve: { months:6 },
+  drawFees: { threshold:2000000, feeUnder:300, feeOver:500, wireFee:0, extensionFee:0 },
+  contingency: { light:5, heavy:10 }
+};
+function cloneDefaults(){ return JSON.parse(JSON.stringify(PARAMS_DEFAULT)); }
+function loadParams(){
+  try{
+    const raw = localStorage.getItem('flipmuchFFParams');
+    if(raw){
+      const saved = JSON.parse(raw);
+      if(saved && saved.feeSchedule && saved.matrix && saved.tierInfo){
+        // Backfill any top-level keys missing from an older saved blob (e.g. params
+        // added in a later update) with fresh defaults, so stale localStorage from
+        // a previous session can never leave the live params object incomplete.
+        const merged = cloneDefaults();
+        Object.keys(merged).forEach(k=>{ if(saved[k]!==undefined) merged[k]=saved[k]; });
+        // Sanity-check: if key matrix leverage caps are all zero the blob is corrupted
+        // (readParamsFromUI ran against empty inputs). Discard and use clean defaults.
+        const m = merged.matrix;
+        const capsOk = m.inst.light.ltaiv > 0 && m.exp.light.ltarv > 0 && m.none.light.ltaiv > 0;
+        if(capsOk) return merged;
+        try{ localStorage.removeItem('flipmuchFFParams'); }catch(_){}
+      }
+    }
+  }catch(e){}
+  return cloneDefaults();
+}
+let params = loadParams();
+function saveParams(){ try{ localStorage.setItem('flipmuchFFParams', JSON.stringify(params)); }catch(e){} }
+
+function applyParamsToUI(){
+  $('p_rate_inst').value = params.tierInfo.inst.rate;
+  $('p_pts_inst').value = params.tierInfo.inst.pts;
+  $('p_rate_exp').value = params.tierInfo.exp.rate;
+  $('p_pts_exp').value = params.tierInfo.exp.pts;
+  $('p_rate_none').value = params.tierInfo.none.rate;
+  $('p_pts_none').value = params.tierInfo.none.pts;
+
+  ['inst','exp','none'].forEach(t=>{
+    $(`p_cap_${t}_light_ltaiv`).value = params.matrix[t].light.ltaiv;
+    $(`p_cap_${t}_light_ltc`).value = params.matrix[t].light.ltc;
+    $(`p_cap_${t}_light_ltarv`).value = params.matrix[t].light.ltarv;
+  });
+  ['inst','exp'].forEach(t=>{
+    $(`p_cap_${t}_heavy_ltaiv`).value = params.matrix[t].heavy.ltaiv;
+    $(`p_cap_${t}_heavy_ltc`).value = params.matrix[t].heavy.ltc;
+    $(`p_cap_${t}_heavy_ltarv`).value = params.matrix[t].heavy.ltarv;
+  });
+  const noneHeavy = params.matrix.none.heavy;
+  $('p_none_heavy_offered').checked = !!noneHeavy;
+  $('p_cap_none_heavy_ltaiv').value = noneHeavy ? noneHeavy.ltaiv : '';
+  $('p_cap_none_heavy_ltc').value = noneHeavy ? noneHeavy.ltc : '';
+  $('p_cap_none_heavy_ltarv').value = noneHeavy ? noneHeavy.ltarv : '';
+  $('p_none_heavy_inputs').style.opacity = noneHeavy ? '1' : '.4';
+
+  const ov = params.overlays;
+  $('p_ov_fico660Haircut').value = ov.fico660Haircut;
+  $('p_ov_condoHaircut').value = ov.condoHaircut;
+  $('p_ov_condoLtvThreshold').value = ov.condoLtvThreshold;
+  $('p_ov_condoRateHigh').value = ov.condoRateHigh;
+  $('p_ov_condoRateLowExp').value = ov.condoRateLowExp;
+  $('p_ov_condoRateLowNone').value = ov.condoRateLowNone;
+  $('p_ov_mfCapPct').value = ov.mfCapPct;
+  $('p_ov_mfRateAdder').value = ov.mfRateAdder;
+  $('p_ov_flZipLtarvBase').value = ov.flZipLtarvBase;
+  $('p_ov_flZipLtarvIR').value = ov.flZipLtarvIR;
+  $('p_ov_flZipLtaivBase').value = ov.flZipLtaivBase;
+  $('p_ov_flZipLtaivIR').value = ov.flZipLtaivIR;
+  $('p_ov_decliningHaircut').value = ov.decliningHaircut;
+  $('p_ov_bigLoanRateFloor').value = ov.bigLoanRateFloor;
+  $('p_ov_bigLoanThreshold').value = ov.bigLoanThreshold;
+
+  const fs = params.feeSchedule;
+  $('p_fee_b1_max').value = fs[0].max;  $('p_fee_b1_uw').value = fs[0].uw; $('p_fee_b1_proc').value = fs[0].proc; $('p_fee_b1_serv').value = fs[0].serv; $('p_fee_b1_legal').value = fs[0].legal;
+  $('p_fee_b2_max').value = fs[1].max;  $('p_fee_b2_uw').value = fs[1].uw; $('p_fee_b2_proc').value = fs[1].proc; $('p_fee_b2_serv').value = fs[1].serv; $('p_fee_b2_legal').value = fs[1].legal;
+  $('p_fee_b3_max').value = fs[2].max;  $('p_fee_b3_uw').value = fs[2].uw; $('p_fee_b3_proc').value = fs[2].proc; $('p_fee_b3_serv').value = fs[2].serv; $('p_fee_b3_legal').value = fs[2].legal;
+  $('p_fee_b4_uw').value = fs[3].uw; $('p_fee_b4_proc').value = fs[3].proc; $('p_fee_b4_serv').value = fs[3].serv; $('p_fee_b4_legal').value = fs[3].legal;
+
+  $('p_heavyFee_feasibility').value = params.heavyFees.feasibility;
+  $('p_heavyFee_permit').value = params.heavyFees.permit;
+  $('p_loanLimit_min').value = params.loanLimits.min;
+  $('p_loanLimit_max').value = params.loanLimits.max;
+  $('p_loanLimit_termLight').value = params.loanLimits.maxTermLight;
+  $('p_loanLimit_termHeavy').value = params.loanLimits.maxTermHeavy;
+  $('p_reserve_months').value = params.reserve.months;
+
+  $('p_draw_threshold').value = params.drawFees.threshold;
+  $('p_draw_feeUnder').value = params.drawFees.feeUnder;
+  $('p_draw_feeOver').value = params.drawFees.feeOver;
+  $('p_draw_wireFee').value = params.drawFees.wireFee;
+  $('p_draw_extensionFee').value = params.drawFees.extensionFee;
+  $('p_cont_light').value = params.contingency.light;
+  $('p_cont_heavy').value = params.contingency.heavy;
+}
+
+/* ---------- Admin PIN gate ----------
+   Note: this is a UI gate, not real security. The file is static HTML/JS that
+   runs entirely in the browser, so anyone who views the page source can read
+   the unlock logic. It's meant to keep regular users from casually opening or
+   editing Program Parameters — not to stop someone determined to inspect the
+   code. Real access control (separate admin/user roles, server-verified auth)
+   would need a backend once this becomes a hosted app. */
+const DEFAULT_PIN_HASH = '7c78c98f'; // hash of default PIN "1234"
+function simpleHash(str){
+  let h = 5381;
+  for(let i=0;i<str.length;i++){
+    h = ((h<<5)+h) + str.charCodeAt(i);
+    h = h & 0xFFFFFFFF;
+  }
+  return (h>>>0).toString(16);
+}
+function getPinHash(){ return localStorage.getItem('flipmuchFFPinHash') || DEFAULT_PIN_HASH; }
+let adminUnlocked = sessionStorage.getItem('flipmuchFFAdminUnlocked') === '1';
+function refreshLockUI(){
+  $('paramsLock').style.display = adminUnlocked ? 'none' : 'block';
+  $('paramsContent').style.display = adminUnlocked ? 'block' : 'none';
+}
+
+function readParamsFromUI(){
+  params.tierInfo.inst.rate = num('p_rate_inst'); params.tierInfo.inst.pts = num('p_pts_inst');
+  params.tierInfo.exp.rate  = num('p_rate_exp');  params.tierInfo.exp.pts  = num('p_pts_exp');
+  params.tierInfo.none.rate = num('p_rate_none'); params.tierInfo.none.pts = num('p_pts_none');
+
+  ['inst','exp','none'].forEach(t=>{
+    params.matrix[t].light = {
+      ltaiv:num(`p_cap_${t}_light_ltaiv`), ltc:num(`p_cap_${t}_light_ltc`), ltarv:num(`p_cap_${t}_light_ltarv`)
+    };
+  });
+  ['inst','exp'].forEach(t=>{
+    params.matrix[t].heavy = {
+      ltaiv:num(`p_cap_${t}_heavy_ltaiv`), ltc:num(`p_cap_${t}_heavy_ltc`), ltarv:num(`p_cap_${t}_heavy_ltarv`)
+    };
+  });
+  params.matrix.none.heavy = $('p_none_heavy_offered').checked ? {
+    ltaiv:num('p_cap_none_heavy_ltaiv'), ltc:num('p_cap_none_heavy_ltc'), ltarv:num('p_cap_none_heavy_ltarv')
+  } : null;
+  $('p_none_heavy_inputs').style.opacity = $('p_none_heavy_offered').checked ? '1' : '.4';
+
+  const ov = params.overlays;
+  ov.fico660Haircut = num('p_ov_fico660Haircut');
+  ov.condoHaircut = num('p_ov_condoHaircut');
+  ov.condoLtvThreshold = num('p_ov_condoLtvThreshold');
+  ov.condoRateHigh = num('p_ov_condoRateHigh');
+  ov.condoRateLowExp = num('p_ov_condoRateLowExp');
+  ov.condoRateLowNone = num('p_ov_condoRateLowNone');
+  ov.mfCapPct = num('p_ov_mfCapPct');
+  ov.mfRateAdder = num('p_ov_mfRateAdder');
+  ov.flZipLtarvBase = num('p_ov_flZipLtarvBase');
+  ov.flZipLtarvIR = num('p_ov_flZipLtarvIR');
+  ov.flZipLtaivBase = num('p_ov_flZipLtaivBase');
+  ov.flZipLtaivIR = num('p_ov_flZipLtaivIR');
+  ov.decliningHaircut = num('p_ov_decliningHaircut');
+  ov.bigLoanRateFloor = num('p_ov_bigLoanRateFloor');
+  ov.bigLoanThreshold = num('p_ov_bigLoanThreshold');
+
+  params.feeSchedule = [
+    {max:num('p_fee_b1_max'), uw:num('p_fee_b1_uw'), proc:num('p_fee_b1_proc'), serv:num('p_fee_b1_serv'), legal:num('p_fee_b1_legal')},
+    {max:num('p_fee_b2_max'), uw:num('p_fee_b2_uw'), proc:num('p_fee_b2_proc'), serv:num('p_fee_b2_serv'), legal:num('p_fee_b2_legal')},
+    {max:num('p_fee_b3_max'), uw:num('p_fee_b3_uw'), proc:num('p_fee_b3_proc'), serv:num('p_fee_b3_serv'), legal:num('p_fee_b3_legal')},
+    {max:null, uw:num('p_fee_b4_uw'), proc:num('p_fee_b4_proc'), serv:num('p_fee_b4_serv'), legal:num('p_fee_b4_legal')}
+  ];
+
+  params.heavyFees.feasibility = num('p_heavyFee_feasibility');
+  params.heavyFees.permit = num('p_heavyFee_permit');
+  params.loanLimits.min = num('p_loanLimit_min');
+  params.loanLimits.max = num('p_loanLimit_max');
+  params.loanLimits.maxTermLight = num('p_loanLimit_termLight');
+  params.loanLimits.maxTermHeavy = num('p_loanLimit_termHeavy');
+  params.reserve.months = num('p_reserve_months');
+
+  params.drawFees.threshold = num('p_draw_threshold');
+  params.drawFees.feeUnder = num('p_draw_feeUnder');
+  params.drawFees.feeOver = num('p_draw_feeOver');
+  params.drawFees.wireFee = num('p_draw_wireFee');
+  params.drawFees.extensionFee = num('p_draw_extensionFee');
+  params.contingency.light = num('p_cont_light');
+  params.contingency.heavy = num('p_cont_heavy');
+
+  saveParams();
+}
+
+/* ---------- Comps table ---------- */
+const compsBody = $('compsBody');
+function addCompRow(data){
+  data = data || {};
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td><input type="text" class="c-addr" value="${data.addr||''}" placeholder="456 Oak Ave"></td>
+    <td><input type="number" class="c-dist" value="${data.dist||''}" step="0.1" style="width:70px;"></td>
+    <td><input type="number" class="c-beds" value="${data.beds||''}" style="width:55px;"></td>
+    <td><input type="number" class="c-baths" value="${data.baths||''}" step="0.5" style="width:55px;"></td>
+    <td><input type="number" class="c-sqft" value="${data.sqft||''}" style="width:80px;"></td>
+    <td><input type="number" class="c-price" value="${data.price||''}" style="width:100px;"></td>
+    <td class="c-ppsf" style="font-weight:600;color:var(--navy);">—</td>
+    <td><button type="button" class="rm-btn" title="Remove comp">✕</button></td>
+  `;
+  tr.querySelectorAll('input').forEach(i=>i.addEventListener('input', calc));
+  tr.querySelector('.rm-btn').addEventListener('click', ()=>{tr.remove(); calc();});
+  compsBody.appendChild(tr);
+}
+$('addCompBtn').addEventListener('click', ()=>addCompRow());
+
+/* ---------- Search options toggle ---------- */
+$('searchOptsToggle').addEventListener('click', ()=>{
+  const p = $('searchOptsPanel');
+  const open = p.style.display !== 'none';
+  p.style.display = open ? 'none' : 'block';
+  $('searchOptsToggle').style.color = open ? 'var(--muted)' : 'var(--navy)';
+  $('searchOptsToggle').style.borderColor = open ? 'var(--line)' : 'var(--navy)';
+});
+
+/* ---------- Sold-comps lookup (RentCast via /api/comps) ----------
+   Works when this file is served from the same domain as the GoingFlip
+   Next.js app (Vercel). The COMPS_KEY is a pre-shared secret that lets
+   the API skip Supabase login for standalone use. */
+
+// ── Deployment URL ──────────────────────────────────────────────────────────
+// Leave empty to use the same-origin relative path (works on Vercel).
+// Set to your full Vercel URL if you want comps to work when the file is
+// opened locally as a file://, e.g.:
+//   const COMPS_API_BASE = 'https://project-k4ljv.vercel.app';
+const COMPS_API_BASE = '';
+const COMPS_KEY = 'gf2026sa';  // Must match COMPS_STANDALONE_KEY in Vercel env vars
+
+const findCompsBtn = $('findCompsBtn');
+const compsStatusEl = $('compsStatus');
+const compUsageBanner = $('compUsageBanner');
+
+function showUsageBanner(usage){
+  if(!usage) return;
+  const { pullsThisMonth, freeLimit, isPaidPull, remaining } = usage;
+  compUsageBanner.style.display = 'block';
+  if(isPaidPull){
+    compUsageBanner.style.cssText += 'background:#fbe9e7;border:1px solid #f5c0b0;color:#7a2020;';
+    compUsageBanner.innerHTML = `<strong>⚠️ Overage pull #${pullsThisMonth - freeLimit}</strong> — Your plan includes ${freeLimit} free comparable searches per month.`;
+  } else if(remaining <= 2){
+    compUsageBanner.style.cssText += 'background:#fbf1dc;border:1px solid #f0c96a;color:#7a4e00;';
+    compUsageBanner.innerHTML = `<strong>⏳ ${remaining} free pull${remaining===1?'':'s'} remaining</strong> (${pullsThisMonth} of ${freeLimit} used this month).`;
+  } else {
+    compUsageBanner.style.cssText += 'background:#e7f4ec;border:1px solid #a3d9b5;color:#1a5c35;';
+    compUsageBanner.innerHTML = `<strong>✓ ${pullsThisMonth} of ${freeLimit} free pulls used this month</strong> — ${remaining} remaining.`;
+  }
+}
+
+async function fetchComps(){
+  const address = ($('subAddress')||{}).value?.trim() || '';
+  const sqft  = ($('subSqft')||{}).value?.trim()  || '';
+  const beds  = ($('subBeds')||{}).value?.trim()  || '';
+  const baths = ($('subBaths')||{}).value?.trim() || '';
+  const year  = ($('subYear')||{}).value?.trim()  || '';
+  if(!address){ compsStatusEl.textContent = 'Enter the subject property address (Section 1) before searching.'; return; }
+  if(!sqft||!beds||!baths||!year){ compsStatusEl.textContent = 'Fill in Sq. Ft., Beds, Baths, and Year Built (Section 1) before searching — comps are matched against those values.'; return; }
+
+  const units = Number(($('subUnits')||{}).value)||1;
+  const propertyType = units > 1 ? 'Multi-Family' : 'Single Family';
+  compsStatusEl.textContent = `Searching sold comps for ${sqft} sqft / ${beds}bd / ${baths}ba / built ${year}…`;
+  findCompsBtn.disabled = true;
+
+  try{
+    const qs = new URLSearchParams({ address, sqft, beds, baths, propertyType, key: COMPS_KEY });
+    const optLimit  = $('optCompCount')?.value; if(optLimit)  qs.set('limit', optLimit);
+    const optRadius = $('optRadius')?.value;    if(optRadius) qs.set('maxRadius', optRadius);
+    const optDays   = $('optDays')?.value;      if(optDays)   qs.set('maxDaysOld', optDays);
+    const res = await fetch(COMPS_API_BASE + '/api/comps?' + qs.toString());
+    const json = await res.json();
+    if(!res.ok) throw new Error(json.error || 'Comps lookup failed.');
+
+    const comps = json.comps || [];
+    compsBody.innerHTML = '';
+    comps.forEach(c=>{
+      addCompRow({ addr:c.address, dist:c.distance, beds:c.beds, baths:c.baths, sqft:c.sqft, price:c.price });
+    });
+    if(!comps.length){
+      compsStatusEl.textContent = 'No confirmed sold comps found even after widening to 12 months / 3 mi — add comps manually or re-check subject specs.';
+    } else {
+      const r = json.radiusUsed ? `${json.radiusUsed} mi` : '—';
+      const m = json.daysOldUsed ? `${Math.round(json.daysOldUsed/30)} mo` : '—';
+      compsStatusEl.textContent = `Found ${comps.length} confirmed sold comp(s) within ${r}, last ${m}. Verify condition/lot size against MLS.`;
+    }
+    showUsageBanner(json.usage);
+    calc();
+  } catch(err){
+    compsStatusEl.textContent = `Comps lookup failed: ${err.message}. To use live comps, deploy the GoingFlip app to Vercel and set COMPS_API_BASE to that URL.`;
+  } finally {
+    findCompsBtn.disabled = false;
+  }
+}
+findCompsBtn.addEventListener('click', fetchComps);
+
+[{addr:'123 Oak Ave, Tampa, FL 33605',dist:0.8,beds:3,baths:2,sqft:1550,price:265000},
+ {addr:'847 Maple Dr, Tampa, FL 33605',dist:1.2,beds:3,baths:2,sqft:1620,price:272000},
+ {addr:'512 Pine St, Tampa, FL 33605',dist:1.7,beds:3,baths:1.5,sqft:1480,price:255000}].forEach(addCompRow);
+
+/* ---------- Use Itemized Carrying Cost Total ---------- */
+$('useItemizedBtn').addEventListener('click', ()=>{
+  $('holdCostMonth').value = Math.round(num('itemTaxesMonth')+num('itemVacInsMonth')+num('itemUtilMonth')+num('itemHoaMonth')+num('itemLawnSecMonth'));
+  calc();
+});
+
+/* ---------- Draw Schedule table ---------- */
+const drawsBody = $('drawsBody');
+function addDrawRow(data){
+  data = data || {};
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td><input type="date" class="d-date" value="${data.date||''}"></td>
+    <td><input type="number" class="d-amt" value="${data.amt||''}" style="width:110px;"></td>
+    <td><button type="button" class="rm-btn" title="Remove draw">✕</button></td>
+  `;
+  tr.querySelectorAll('input').forEach(i=>i.addEventListener('input', calc));
+  tr.querySelector('.rm-btn').addEventListener('click', ()=>{tr.remove(); calc();});
+  drawsBody.appendChild(tr);
+}
+$('addDrawBtn').addEventListener('click', ()=>addDrawRow());
+$('useDrawSchedule').addEventListener('click', function(){
+  $('drawSchedulePanel').style.display = this.checked ? 'block' : 'none';
+  calc();
+});
+
+/* ---------- Date helpers (draw schedule & actuals) ---------- */
+function daysBetween(d1, d2){
+  if(!d1 || !d2) return 0;
+  const t1 = new Date(d1+'T00:00:00'), t2 = new Date(d2+'T00:00:00');
+  const ms = t2-t1;
+  return ms>0 ? ms/(1000*60*60*24) : 0;
+}
+function addMonthsToDateStr(dateStr, months){
+  if(!dateStr) return null;
+  const d = new Date(dateStr+'T00:00:00');
+  d.setMonth(d.getMonth()+Math.round(months));
+  return d.toISOString().slice(0,10);
+}
+
+/* ---------- Actuals / Closeout toggle ---------- */
+$('dealClosed').addEventListener('change', function(){
+  $('closeoutFields').style.display = this.checked ? 'block' : 'none';
+  calc();
+});
+
+/* ---------- Rule radios ---------- */
+document.querySelectorAll('input[name="rule"]').forEach(r=>{
+  r.addEventListener('change', ()=>{
+    const checked = document.querySelector('input[name="rule"]:checked');
+    $('customRulePct').style.display = (checked && checked.value==='custom') ? 'inline-block':'none';
+    calc();
+  });
+});
+$('customRulePct').addEventListener('input', calc);
+
+/* ---------- Finance toggle ---------- */
+// Use 'click' instead of 'change' — iOS Safari styled checkboxes (.switch)
+// often don't fire 'change'; 'click' is reliable on all platforms.
+$('financeToggle').addEventListener('click', function(){
+  $('financePanel').classList.toggle('show', this.checked);
+  calc();
+});
+
+/* ---------- Loan Options toggle ---------- */
+$('loanOptsToggle').addEventListener('click', function(){
+  const panel = $('loanOptsPanel');
+  const open = panel.style.display === 'none';
+  panel.style.display = open ? 'block' : 'none';
+  $('loanOptsToggleLabel').textContent = open ? 'Loan Options ▲' : 'Loan Options';
+});
+
+/* ---------- Additional Fees toggle ---------- */
+$('feesToggleBtn').addEventListener('click', function(){
+  const panel = $('feesPanel');
+  const open = panel.style.display === 'none';
+  panel.style.display = open ? 'block' : 'none';
+  $('feesToggleBtnLabel').textContent = open ? 'Additional Fees ▲' : 'Additional Fees';
+});
+
+/* ---------- Estimate buttons ---------- */
+function autoInspectionFee(){
+  const sqft = num('subSqft');
+  const age = num('subYear') ? (new Date().getFullYear()-num('subYear')) : 0;
+  const units = num('subUnits')||1;
+  let fee = 325;
+  if (sqft>1500) fee += 0.08*(sqft-1500);
+  if (age>=70) fee += 150; else if (age>=40) fee += 75;
+  if (units>1) fee += 75*(units-1);
+  return Math.round(fee/5)*5;
+}
+function autoAppraisalFee(arv){
+  const sqft = num('subSqft');
+  const units = num('subUnits')||1;
+  let fee = 450 + 0.0003*arv;
+  if (sqft>2500) fee += 100;
+  if (units>1) fee += 100*(units-1);
+  return Math.round(fee/5)*5;
+}
+$('estInspectionBtn').addEventListener('click', ()=>{
+  $('inspectionFee').value = autoInspectionFee();
+  calc();
+});
+$('estAppraisalBtn').addEventListener('click', ()=>{
+  $('appraisalFee').value = autoAppraisalFee(num('arvField'));
+  calc();
+});
+$('useArvBtn').addEventListener('click', ()=>{
+  const sqft = num('subSqft');
+  const rows = compsBody.querySelectorAll('tr');
+  let ppsfList = [];
+  rows.forEach(r=>{
+    const sqftC = parseFloat(r.querySelector('.c-sqft').value)||0;
+    const priceC = parseFloat(r.querySelector('.c-price').value)||0;
+    if(sqftC>0 && priceC>0) ppsfList.push(priceC/sqftC);
+  });
+  const avgPpsf = ppsfList.length ? ppsfList.reduce((a,b)=>a+b,0)/ppsfList.length : 0;
+  if(sqft>0 && avgPpsf>0){
+    $('arvField').value = Math.round(avgPpsf*sqft);
+    calc();
+  }
+});
+
+/* ---------- Main calc ---------- */
+function calc(){
+  const sqft = num('subSqft');
+
+  // Comps
+  const rows = compsBody.querySelectorAll('tr');
+  let ppsfList = [];
+  rows.forEach(r=>{
+    const sqftC = parseFloat(r.querySelector('.c-sqft').value)||0;
+    const priceC = parseFloat(r.querySelector('.c-price').value)||0;
+    const cell = r.querySelector('.c-ppsf');
+    if(sqftC>0 && priceC>0){
+      const ppsf = priceC/sqftC;
+      cell.textContent = "$"+ppsf.toFixed(0)+"/sf";
+      ppsfList.push(ppsf);
+    } else {
+      cell.textContent = "—";
+    }
+  });
+  const avgPpsf = ppsfList.length ? ppsfList.reduce((a,b)=>a+b,0)/ppsfList.length : 0;
+  const sorted = [...ppsfList].sort((a,b)=>a-b);
+  const medianPpsf = sorted.length ? (sorted.length%2 ? sorted[(sorted.length-1)/2] : (sorted[sorted.length/2-1]+sorted[sorted.length/2])/2) : 0;
+  $('avgPpsf').textContent = ppsfList.length ? "$"+avgPpsf.toFixed(0)+"/sf" : "—";
+  $('medianPpsf').textContent = ppsfList.length ? "$"+medianPpsf.toFixed(0)+"/sf" : "—";
+  $('compCount').textContent = ppsfList.length;
+  const suggestedArv = (sqft>0 && avgPpsf>0) ? avgPpsf*sqft : 0;
+  $('suggestedArv').textContent = suggestedArv ? fmtMoney(suggestedArv) : "—";
+
+  // Inspection / appraisal live hints
+  $('inspectionHint').textContent = "Estimate from features: " + fmtMoney(autoInspectionFee());
+  $('appraisalHint').textContent = "Estimate from features: " + fmtMoney(autoAppraisalFee(num('arvField')));
+
+  // Core deal numbers
+  const purchasePrice = num('purchasePrice');
+  const rehabBudget = num('rehabBudget');
+  const arv = num('arvField');
+  const holdMonths = num('holdMonths');
+  const holdCostMonth = num('holdCostMonth');
+  const holdingCosts = holdMonths*holdCostMonth;
+
+  // Itemized monthly carrying costs (optional — feeds the "Use Itemized Total" button)
+  const itemizedMonthly = num('itemTaxesMonth')+num('itemVacInsMonth')+num('itemUtilMonth')+num('itemHoaMonth')+num('itemLawnSecMonth');
+  $('itemizedTotalDisplay').textContent = fmtMoney(itemizedMonthly);
+
+  const inspectionFee = num('inspectionFee');
+  const appraisalFee = num('appraisalFee');
+  const realtorPurchasePct = num('realtorPurchasePct');
+  const realtorSalePct = num('realtorSalePct');
+  const purchaseClosingPct = num('purchaseClosingPct');
+  const saleClosingPct = num('saleClosingPct');
+
+  const purchaseClosingCosts = purchasePrice*purchaseClosingPct/100;
+  const saleClosingCosts = arv*saleClosingPct/100;
+  const realtorPurchaseFee = purchasePrice*realtorPurchasePct/100;
+  const realtorSaleFee = arv*realtorSalePct/100;
+
+  // Rehab contingency buffer — unfinanced, kept separate from the lender's holdback cap
+  const contingencyPct = num('contingencyPct');
+  const rehabContingency = rehabBudget*contingencyPct/100;
+
+  // Closing & title costs
+  const titleInsPurchase = num('titleInsPurchase');
+  const titleInsSale = num('titleInsSale');
+  const transferTaxPct = num('transferTaxPct');
+  const transferTax = purchasePrice*transferTaxPct/100;
+  const surveyFee = num('surveyFee');
+  const escrowFee = num('escrowFee');
+  const purchaseTitleCosts = titleInsPurchase+surveyFee+escrowFee+transferTax;
+  const saleTitleCosts = titleInsSale;
+
+  // Sale-side & contingency costs
+  const stagingCost = num('stagingCost');
+  const marketingFee = num('marketingFee');
+  const buyerConcessionPct = num('buyerConcessionPct');
+  const buyerConcession = arv*buyerConcessionPct/100;
+  const saleExtras = stagingCost+marketingFee+buyerConcession;
+
+  // 60/70 rule
+  const ruleRadio = document.querySelector('input[name="rule"]:checked');
+  const ruleVal = ruleRadio ? ruleRadio.value : '70';
+  const rulePct = ruleVal==='custom' ? num('customRulePct') : parseFloat(ruleVal);
+  $('ruleUsedPct').textContent = rulePct+"%";
+  const mao = arv*rulePct/100 - rehabBudget;
+  $('maoVal').textContent = fmtMoney(mao);
+  const ruleDelta = mao - purchasePrice;
+  const withinRule = ruleDelta >= 0;
+  $('maoDelta').textContent = (withinRule? "+":"") + fmtMoney(ruleDelta) + (withinRule? " cushion":" over MAO");
+  $('maoDelta').className = "val " + (withinRule? "":"neg");
+  $('m-rule').textContent = withinRule ? "Within "+rulePct+"%" : "Over "+rulePct+"%";
+  $('m-rule').className = "val " + (withinRule? "":"neg");
+
+  // Financing — GoingFlip Fix & Flip matrix (editable via the Program Parameters panel)
+  // Only re-read from DOM inputs when admin panel is open — prevents zero-writes to localStorage.
+  if(adminUnlocked) readParamsFromUI();
+
+  const financed = $('financeToggle').checked;
+  let day1=0, holdback=0, tla=0, monthlyIO=0, totalInterest=0, pointsCost=0, balloon=0,
+      lenderFeesTotal=0, closingCostsLoan=0, downPayment=0, liquidityReq=0, financingCosts=0,
+      cashInterestPortion=0, unfinancedRehab=0, loanStartDate='', drawFeesTotal=0, extensionFee=0;
+
+  if(financed){
+    const tier = $('expTier').value;
+    const fico = $('ficoBucket').value;
+    const aivAppraisal = num('aivAppraisal');
+    const aivUsed = aivAppraisal>0 ? Math.min(purchasePrice, aivAppraisal) : purchasePrice;
+    const budgetRatio = aivUsed>0 ? rehabBudget/aivUsed : 0;
+    const glaInc = $('glaIncrease25').checked;
+    const isCondo = $('isCondo').checked;
+    const isMF = $('isMultiFamily').checked;
+    const isFLZip = $('isFLZip').checked;
+    const isDeclining = $('decliningMarket').checked;
+    const irPct = num('irPct');
+    const irQualifies = irPct>0 && irPct<=5;
+
+    $('budgetRatioDisplay').textContent = fmtPct(budgetRatio*100);
+
+    let eligible = true;
+    let classification;
+    let notes = [];
+
+    if(tier==='none'){
+      if(glaInc || budgetRatio>=0.30){ eligible=false; classification='Heavy (not offered to 0–2 Experience)'; }
+      else classification='Light';
+    } else {
+      classification = (glaInc || budgetRatio>=0.50) ? 'Heavy' : 'Light';
+    }
+
+    let caps = eligible ? params.matrix[tier][classification==='Light'?'light':'heavy'] : null;
+    if(!caps){ eligible=false; caps={ltaiv:0,ltc:0,ltarv:0}; }
+
+    const minContingency = classification==='Light' ? params.contingency.light : params.contingency.heavy;
+    if(contingencyPct < minContingency){
+      notes.push(`GoingFlip requires a minimum ${minContingency}% rehab contingency for ${classification} Fix & Flip — current Contingency Buffer % (Card 3) is only ${contingencyPct}%.`);
+    }
+
+    let ltaiv=caps.ltaiv, ltc=caps.ltc, ltarv=caps.ltarv;
+    const ov = params.overlays;
+
+    if(fico==='below660'){ eligible=false; notes.push('FICO below 660 is not eligible under this program.'); }
+    else if(fico==='660'){
+      if(tier==='none'){ eligible=false; notes.push('FICO 660–679 requires an Experienced or Institutional tier.'); }
+      else { ltaiv-=ov.fico660Haircut; ltc-=ov.fico660Haircut; ltarv-=ov.fico660Haircut; notes.push(`FICO 660–679: -${ov.fico660Haircut}% to LTAIV/LTC/LTARV; cash-out not permitted.`); }
+    }
+    if(isCondo){ ltaiv-=ov.condoHaircut; ltc-=ov.condoHaircut; ltarv-=ov.condoHaircut; notes.push(`Condo: -${ov.condoHaircut}% to LTAIV/LTC/LTARV.`); }
+    if(isMF){
+      if(tier==='none'){ eligible=false; notes.push('Multi-family (5+ units) requires an Experienced or Institutional tier.'); }
+      ltaiv=Math.min(ltaiv,ov.mfCapPct); ltc=Math.min(ltc,ov.mfCapPct);
+      notes.push(`Multi-family: capped at ${ov.mfCapPct}% LTAIV/LTC, +${ov.mfRateAdder}% rate, 20-unit cap, no GUC.`);
+    }
+    if(isFLZip){
+      const ltarvCap = irQualifies?ov.flZipLtarvIR:ov.flZipLtarvBase, ltaivCap = irQualifies?ov.flZipLtaivIR:ov.flZipLtaivBase;
+      ltarv=Math.min(ltarv,ltarvCap); ltaiv=Math.min(ltaiv,ltaivCap);
+      notes.push(`FL West Coast zip cap: LTARV ≤ ${ltarvCap}%, LTAIV ≤ ${ltaivCap}%${irQualifies?' (IR bump applied)':''}.`);
+    }
+    if(isDeclining){ ltc-=ov.decliningHaircut; ltarv-=ov.decliningHaircut; notes.push(`Declining market: -${ov.decliningHaircut}% to LTC/LTARV.`); }
+
+    ltaiv=Math.max(ltaiv,0); ltc=Math.max(ltc,0); ltarv=Math.max(ltarv,0);
+
+    $('classDisplay').textContent = classification;
+    $('capLtaivDisplay').textContent = fmtPct(ltaiv);
+    $('capLtcDisplay').textContent = fmtPct(ltc);
+    $('capLtarvDisplay').textContent = fmtPct(ltarv);
+
+    const totalCost = aivUsed+rehabBudget;
+    // LTAIV cap = AIV (As-Is/purchase price) × the experience-tier/loan-type percentage —
+    // rehab budget is NOT added to this figure when computing the LTAIV percentage itself.
+    // LTAIV governs only how much of the loan can be disbursed as Day 1.
+    const day1ByAiv = aivUsed*ltaiv/100;
+    const tlaByCost = totalCost*ltc/100;
+    const tlaByArv = arv*ltarv/100;
+    // Total Loan Amount: bounded by LTC, LTARV, AND by what Day 1 (LTAIV-capped) plus
+    // Holdback (rehab-budget-capped) can actually disburse. That third term isn't rehab
+    // being "added into" the LTAIV percentage — it's the ceiling on what the lender can
+    // structurally fund: if LTC/LTARV would allow a bigger loan than Day1-max + the rehab
+    // budget can absorb, the extra amount has nowhere to go (Day 1 can't exceed LTAIV,
+    // and Holdback shouldn't exceed the rehab budget), so the loan is capped there instead.
+    const tlaMax = eligible ? Math.min(tlaByCost, tlaByArv, day1ByAiv + rehabBudget) : 0;
+    const manualLoan = num('loanAmountManual');
+    tla = tlaMax;
+    if(manualLoan>0){
+      if(manualLoan > tlaMax){
+        tla = tlaMax;
+        if(eligible) notes.push(`Requested loan amount of ${fmtMoney(manualLoan)} exceeds the maximum allowed under LTAIV/LTC/LTARV caps — reduced to ${fmtMoney(tlaMax)}.`);
+      } else {
+        tla = manualLoan;
+      }
+    }
+    // Day 1 / Holdback Allocation slider: the Total Loan Amount above is fixed by the
+    // LTC / LTAIV / LTARV caps and does NOT change as the slider moves. Within that fixed
+    // total, the slider can shift funds between Day 1 and Holdback subject to TWO hard
+    // limits: Day 1 can never exceed its LTAIV cap, and Holdback can never exceed the
+    // stated rehab budget. Holdback may be LESS than the rehab budget (funds shifted to
+    // Day 1) but never more.
+    const day1CapByLtaiv = eligible ? Math.min(day1ByAiv, tla) : 0;   // Day 1 ceiling — LTAIV cap
+    const holdbackCapByRehab = eligible ? Math.min(rehabBudget, tla) : 0; // Holdback ceiling — rehab budget
+    const day1Floor = eligible ? Math.max(0, tla - holdbackCapByRehab) : 0; // least Day 1 can be without holdback exceeding its cap
+    const day1Max = day1CapByLtaiv; // most Day 1 can be without exceeding the LTAIV cap
+    const hasSlack = eligible && (day1Max - day1Floor) > 0.5;
+    const day1SplitPct = Math.min(100, Math.max(0, num('day1SplitPct')));
+    day1 = hasSlack ? day1Floor + (day1Max-day1Floor)*(day1SplitPct/100) : day1Max;
+    holdback = Math.max(tla - day1, 0);
+
+    $('day1SplitPct').disabled = !eligible || !hasSlack;
+    $('day1SplitPctDisplay').textContent = `${day1SplitPct}% to Day 1`;
+    $('day1SplitHint').textContent = !eligible ? '' : hasSlack
+      ? `Total Loan Amount stays fixed at ${fmtMoney(tla)}. Day 1 ranges ${fmtMoney(day1Floor)}–${fmtMoney(day1Max)} (capped by the ${tier==='inst'?'Institutional 10+':tier==='exp'?'Experienced 3–9':'0–2/No Experience'} tier's ${classification} LTAIV cap of ${fmtPct(ltaiv)}); Holdback moves opposite it but never exceeds the rehab budget of ${fmtMoney(rehabBudget)}.`
+      : `No slack to reallocate: the LTAIV cap (${fmtMoney(day1Max)} max Day 1) and the rehab budget (${fmtMoney(rehabBudget)} max Holdback) together already account for the full ${fmtMoney(tla)} loan, so funds can't be moved between Day 1 and Holdback without exceeding one of the caps.`;
+
+    let rate;
+    const ltvUsed = aivUsed>0 ? (day1/aivUsed*100) : 0;
+    if(isCondo){ rate = ltvUsed>ov.condoLtvThreshold ? ov.condoRateHigh : (tier==='none'?ov.condoRateLowNone:ov.condoRateLowExp); }
+    else { rate = params.tierInfo[tier].rate + (isMF?ov.mfRateAdder:0); }
+    if(tla>ov.bigLoanThreshold) rate = Math.max(rate, ov.bigLoanRateFloor);
+    // Origination Fee defaults to flipmuch's tier-based pricing: 1.5% for 0–9 experience tiers,
+    // 1.0% for Institutional 10+. A special discounted rate (e.g. 0.5%) can override the
+    // default via the Origination Fee % Override field (4% program max).
+    const origFeeOverride = num('origFeeOverride');
+    const pts = origFeeOverride>0 ? Math.min(origFeeOverride,4) : params.tierInfo[tier].pts;
+
+    const termMonths = parseInt($('loanTerm').value)||12;
+    const allowedMax = classification==='Heavy' ? params.loanLimits.maxTermHeavy : params.loanLimits.maxTermLight;
+
+    const day1MonthlyInterest = day1*(rate/100/12);
+    monthlyIO = tla*(rate/100/12);
+    const effMonths = holdMonths>0 ? holdMonths : termMonths;
+
+    extensionFee = (holdMonths>termMonths && holdMonths>0) ? params.drawFees.extensionFee : 0;
+
+    // Draw Schedule (disbursed-balance interest): holdback funds don't accrue interest
+    // until they're actually disbursed. If the draw table is populated and a Loan Start
+    // Date is set, compute precise per-diem interest from each amount's own disbursement
+    // date through the payoff date, instead of the average-half-balance estimate below.
+    loanStartDate = $('loanStartDate').value;
+    const dealClosedForPayoff = $('dealClosed').checked;
+    const actualSaleDateForPayoff = $('actualSaleDate').value;
+    const payoffDate = (dealClosedForPayoff && actualSaleDateForPayoff) ? actualSaleDateForPayoff : addMonthsToDateStr(loanStartDate, effMonths);
+
+    const drawRows = Array.from(drawsBody.querySelectorAll('tr')).map(r=>({
+      date: r.querySelector('.d-date').value,
+      amt: parseFloat(r.querySelector('.d-amt').value)||0
+    })).filter(d=>d.amt>0);
+    const totalDrawn = drawRows.reduce((s,d)=>s+d.amt,0);
+    $('totalDrawnDisplay').textContent = fmtMoney(totalDrawn);
+    if(totalDrawn > holdback+0.5){
+      $('drawOverageWarn').style.display='block';
+      $('drawOverageWarn').textContent = `Total drawn (${fmtMoney(totalDrawn)}) exceeds the Holdback of ${fmtMoney(holdback)} — the lender won't fund draws beyond the approved holdback.`;
+    } else {
+      $('drawOverageWarn').style.display='none';
+    }
+    const drawInspectionFee = rehabBudget >= params.drawFees.threshold ? params.drawFees.feeOver : params.drawFees.feeUnder;
+    drawFeesTotal = drawRows.length * (drawInspectionFee + params.drawFees.wireFee);
+
+    const useDrawSchedule = $('useDrawSchedule').checked;
+    if(useDrawSchedule && loanStartDate && payoffDate){
+      let precise = day1 * (rate/100/365) * daysBetween(loanStartDate, payoffDate);
+      drawRows.forEach(d=>{ if(d.date) precise += d.amt * (rate/100/365) * daysBetween(d.date, payoffDate); });
+      totalInterest = precise;
+    } else {
+      // Draw-weighted interest: the Day 1 balance accrues for the full hold period; the holdback
+      // only accrues once drawn, modeled as an average half-balance over the hold period.
+      totalInterest = (day1*effMonths + holdback*effMonths/2) * (rate/100/12);
+      if(useDrawSchedule) notes.push('Draw schedule needs a Loan Start Date to compute precise interest — using the average-balance estimate instead.');
+    }
+    pointsCost = tla*pts/100;
+    balloon = tla;
+
+    function lenderFeesFor(amt){
+      if(amt<=0) return {uw:0,proc:0,serv:0,legal:0};
+      for(const bracket of params.feeSchedule){
+        if(bracket.max===null || amt<bracket.max) return bracket;
+      }
+      return params.feeSchedule[params.feeSchedule.length-1];
+    }
+    const sched = lenderFeesFor(tla);
+    // Draw inspection fees are billed at the time of each draw, not at closing, so they are
+    // excluded from upfront closing costs (consistent with the LOI's closing-cost line items).
+    const ffFees = classification==='Heavy' ? params.heavyFees : {feasibility:0,permit:0};
+    lenderFeesTotal = sched.uw+sched.proc+sched.serv+sched.legal+ffFees.feasibility+ffFees.permit;
+    closingCostsLoan = pointsCost + lenderFeesTotal + drawFeesTotal + extensionFee;
+
+    const irAmount = irPct>0 ? tla*irPct/100 : 0;
+    downPayment = Math.max(aivUsed-day1, 0);
+    // Reserve is based on Day 1 interest only — holdback funds don't accrue interest
+    // until drawn (matches the LOI's reserve calculation).
+    const sixMoPayments = day1MonthlyInterest*params.reserve.months;
+    const reserveAfterIR = Math.max(sixMoPayments-irAmount,0);
+    unfinancedRehab = Math.max(rehabBudget-holdback,0);
+    liquidityReq = downPayment+closingCostsLoan+reserveAfterIR+unfinancedRehab+purchaseTitleCosts+rehabContingency;
+    cashInterestPortion = Math.max(totalInterest-irAmount,0);
+
+    financingCosts = totalInterest+closingCostsLoan;
+
+    $('day1Display').textContent = fmtMoney(day1);
+    $('holdbackDisplay').textContent = fmtMoney(holdback);
+    $('tlaDisplay').textContent = fmtMoney(tla);
+    $('rateDisplay').textContent = fmtPct(rate);
+    $('ptsDisplay').textContent = fmtPct(pts);
+    $('day1MonthlyIODisplay').textContent = fmtMoney(day1MonthlyInterest);
+    $('monthlyIODisplay').textContent = fmtMoney(monthlyIO);
+    $('totalInterestDisplay').textContent = fmtMoney(totalInterest);
+    $('pointsCostDisplay').textContent = fmtMoney(pointsCost);
+    $('lenderFeesDisplay').textContent = fmtMoney(lenderFeesTotal);
+    $('drawFeesDisplay').textContent = fmtMoney(drawFeesTotal+extensionFee);
+    $('closingCostsLoanDisplay').textContent = fmtMoney(closingCostsLoan);
+    $('balloonDisplay').textContent = fmtMoney(balloon);
+    $('downPaymentDisplay').textContent = fmtMoney(downPayment);
+    $('sixMoReserveDisplay').textContent = fmtMoney(reserveAfterIR);
+    $('sixMoReserveLabel').textContent = `${params.reserve.months}-Mo Interest (less IR)`;
+    $('unfinancedRehabDisplay').textContent = fmtMoney(unfinancedRehab);
+    $('liquidityReqDisplay').textContent = fmtMoney(liquidityReq);
+
+    if(!eligible){
+      $('eligibilityWarn').style.display='block';
+      $('eligibilityWarn').textContent = 'Not eligible under current inputs — ' + (notes.length? notes.join(' ') : 'classification/tier combination is not offered.');
+    } else {
+      $('eligibilityWarn').style.display='none';
+    }
+
+    if(holdMonths>termMonths && holdMonths>0){
+      $('termWarning').style.display='block';
+      $('termWarning').textContent = `Hold period (${holdMonths} mo) exceeds the loan term (${termMonths} mo) — you'd need to refinance, extend, or sell before the balloon is due.`;
+    } else if(termMonths>allowedMax){
+      $('termWarning').style.display='block';
+      $('termWarning').textContent = `${classification} Fix & Flip terms run 12–${allowedMax} months under GoingFlip's guidelines; ${termMonths} months would need an exception.`;
+    } else {
+      $('termWarning').style.display='none';
+    }
+
+    if(tla>0 && tla<params.loanLimits.min){
+      $('sizeWarning').style.display='block';
+      $('sizeWarning').textContent = `Total Loan Amount of ${fmtMoney(tla)} is below GoingFlip's ${fmtMoney(params.loanLimits.min)} minimum loan size.`;
+    } else if(tla>params.loanLimits.max){
+      $('sizeWarning').style.display='block';
+      $('sizeWarning').textContent = `Total Loan Amount exceeds the ${fmtMoney(params.loanLimits.max)} program max — requires Internal Committee (IC) approval.`;
+    } else {
+      $('sizeWarning').style.display='none';
+    }
+
+    $('overlayNotes').textContent = notes.length ? 'Overlays applied: ' + notes.join(' ') : '';
+  }
+
+  const totalProjectCost = purchasePrice + purchaseClosingCosts + realtorPurchaseFee + purchaseTitleCosts
+    + rehabBudget + rehabContingency + inspectionFee + appraisalFee + holdingCosts + financingCosts
+    + saleTitleCosts + saleExtras + realtorSaleFee + saleClosingCosts;
+  const netProfit = arv - totalProjectCost;
+
+  let cashInvested;
+  if(financed){
+    cashInvested = downPayment + purchaseClosingCosts + realtorPurchaseFee + purchaseTitleCosts + inspectionFee + appraisalFee + holdingCosts
+                 + closingCostsLoan + cashInterestPortion + unfinancedRehab + rehabContingency;
+  } else {
+    cashInvested = purchasePrice + purchaseClosingCosts + realtorPurchaseFee + purchaseTitleCosts + rehabBudget + rehabContingency + inspectionFee + appraisalFee + holdingCosts;
+  }
+  const roi = cashInvested>0 ? (netProfit/cashInvested*100) : 0;
+  const annualizedRoi = holdMonths>0 ? roi*(12/holdMonths) : roi;
+  const targetRoi = num('targetRoi');
+
+  // Actuals / Closeout — feasibility check at end of project
+  const dealClosed = $('dealClosed').checked;
+  $('closeoutFields').style.display = dealClosed ? 'block' : 'none';
+  let actualTotalCost = totalProjectCost, actualNetProfit = netProfit, actualCashInvested = cashInvested,
+      actualRoi = roi, actualAnnualizedRoi = annualizedRoi;
+  if(dealClosed){
+    const actualRehabSpentInput = num('actualRehabSpent');
+    const actualRehabSpent = actualRehabSpentInput>0 ? actualRehabSpentInput : rehabBudget;
+    const actualOtherAdj = num('actualOtherAdj');
+    const actualSalePriceInput = num('actualSalePrice');
+    const finalSalePrice = actualSalePriceInput>0 ? actualSalePriceInput : arv;
+    const actualSaleDateVal = $('actualSaleDate').value;
+
+    actualTotalCost = totalProjectCost - rehabBudget + actualRehabSpent + actualOtherAdj;
+    if(financed){
+      const actualUnfinancedRehab = Math.max(actualRehabSpent - holdback, 0);
+      actualCashInvested = cashInvested - unfinancedRehab + actualUnfinancedRehab + actualOtherAdj;
+    } else {
+      actualCashInvested = cashInvested - rehabBudget + actualRehabSpent + actualOtherAdj;
+    }
+    actualNetProfit = finalSalePrice - actualTotalCost;
+    actualRoi = actualCashInvested>0 ? (actualNetProfit/actualCashInvested*100) : 0;
+    let actualHoldMonths = holdMonths;
+    if(loanStartDate && actualSaleDateVal){
+      actualHoldMonths = daysBetween(loanStartDate, actualSaleDateVal)/30.44;
+    }
+    actualAnnualizedRoi = actualHoldMonths>0 ? actualRoi*(12/actualHoldMonths) : actualRoi;
+  }
+  $('projProfitCompare').textContent = fmtMoney(netProfit);
+  $('actualProfitCompare').textContent = fmtMoney(actualNetProfit);
+  $('actualProfitCompare').className = "val"+(actualNetProfit<0?" neg":"");
+  $('profitVarianceCompare').textContent = (actualNetProfit-netProfit>=0?'+':'') + fmtMoney(actualNetProfit-netProfit);
+  $('projRoiCompare').textContent = fmtPct(roi);
+  $('actualRoiCompare').textContent = fmtPct(actualRoi);
+  $('projAroiCompare').textContent = fmtPct(annualizedRoi);
+  $('actualAroiCompare').textContent = fmtPct(actualAnnualizedRoi);
+
+  // Breakdown table
+  $('b-purchase').textContent = fmtMoney(purchasePrice);
+  $('b-pclose').textContent = fmtMoney(purchaseClosingCosts);
+  $('b-rpurchase').textContent = fmtMoney(realtorPurchaseFee);
+  $('b-purchasetitle').textContent = fmtMoney(purchaseTitleCosts);
+  $('b-rehab').textContent = fmtMoney(rehabBudget);
+  $('b-contingency').textContent = fmtMoney(rehabContingency);
+  $('b-inspect').textContent = fmtMoney(inspectionFee);
+  $('b-appraisal').textContent = fmtMoney(appraisalFee);
+  $('b-holding').textContent = fmtMoney(holdingCosts);
+  $('b-fininterest').textContent = fmtMoney(totalInterest);
+  $('b-finfees').textContent = fmtMoney(closingCostsLoan);
+  $('b-saletitle').textContent = fmtMoney(saleTitleCosts);
+  $('b-saleextras').textContent = fmtMoney(saleExtras);
+  $('b-rsale').textContent = fmtMoney(realtorSaleFee);
+  $('b-sclose').textContent = fmtMoney(saleClosingCosts);
+  $('b-total').textContent = fmtMoney(totalProjectCost);
+  $('b-arv').textContent = fmtMoney(arv);
+  $('b-profit').textContent = fmtMoney(netProfit);
+  $('b-profit').className = "amt" + (netProfit<0 ? " neg":"");
+  $('b-cash').textContent = fmtMoney(cashInvested);
+  $('b-roi').textContent = fmtPct(roi);
+  $('b-aroi').textContent = fmtPct(annualizedRoi);
+
+  // Summary bar
+  $('m-arv').textContent = fmtMoney(arv);
+  $('m-cost').textContent = fmtMoney(totalProjectCost);
+  $('m-profit').textContent = fmtMoney(netProfit);
+  $('m-profit').className = "val"+(netProfit<0?" neg":"");
+  $('m-cash').textContent = fmtMoney(cashInvested);
+  $('m-roi').textContent = fmtPct(roi);
+  $('m-aroi').textContent = fmtPct(annualizedRoi);
+  $('m-aroi').className = "val"+(annualizedRoi<targetRoi?" neg":"");
+
+  // Verdict
+  let level, label, explain;
+  if(netProfit<=0){
+    level='red'; label='Pass — Deal Loses Money';
+    explain = `At these numbers the flip loses ${fmtMoney(Math.abs(netProfit))}. Lower the purchase price, cut rehab scope, or revisit the ARV.`;
+  } else if(withinRule && annualizedRoi>=targetRoi){
+    level='green'; label='Good Deal — Meets Rule & ROI Target';
+    explain = `Purchase price is within the ${rulePct}% rule (cushion of ${fmtMoney(ruleDelta)}) and annualized ROI of ${fmtPct(annualizedRoi)} clears your ${targetRoi}% target.`;
+  } else {
+    level='amber'; label='Marginal — Proceed with Caution';
+    let reasons=[];
+    if(!withinRule) reasons.push(`purchase price is ${fmtMoney(Math.abs(ruleDelta))} over the ${rulePct}% rule MAO`);
+    if(annualizedRoi<targetRoi) reasons.push(`annualized ROI of ${fmtPct(annualizedRoi)} is below your ${targetRoi}% target`);
+    explain = "Profitable, but " + reasons.join(" and ") + ".";
+  }
+  $('verdictBadge').textContent = label;
+  $('verdictBadge').className = "verdict-badge "+level;
+  $('verdictExplain').textContent = explain;
+}
+
+/* ---------- Export / Import / Print / Reset ---------- */
+function collectIds(){
+  // Excludes "p_*" Program Parameters fields and "adm_*" admin-PIN fields —
+  // those are global browser settings (saved via localStorage), not part of
+  // any individual deal export/import.
+  return Array.from(document.querySelectorAll('input[id], select[id]'))
+    .map(el=>el.id)
+    .filter(id=>!id.startsWith('p_') && !id.startsWith('adm_'));
+}
+$('exportBtn').addEventListener('click', ()=>{
+  const data = {};
+  collectIds().forEach(id=>{
+    const el = $(id);
+    data[id] = el.type==='checkbox' ? el.checked : el.value;
+  });
+  data.rule = (document.querySelector('input[name="rule"]:checked')||{}).value;
+  data.comps = Array.from(compsBody.querySelectorAll('tr')).map(r=>({
+    addr:r.querySelector('.c-addr').value, dist:r.querySelector('.c-dist').value,
+    beds:r.querySelector('.c-beds').value, baths:r.querySelector('.c-baths').value,
+    sqft:r.querySelector('.c-sqft').value, price:r.querySelector('.c-price').value
+  }));
+  data.draws = Array.from(drawsBody.querySelectorAll('tr')).map(r=>({
+    date:r.querySelector('.d-date').value, amt:r.querySelector('.d-amt').value
+  }));
+  const blob = new Blob([JSON.stringify(data,null,2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  const addr = ($('subAddress').value || 'deal').replace(/[^a-z0-9]+/gi,'-').toLowerCase();
+  a.download = `fix-flip-${addr}.json`;
+  a.click();
+});
+$('importBtn').addEventListener('click', ()=>$('importFile').click());
+$('importFile').addEventListener('change', (e)=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = function(ev){
+    try{
+      const data = JSON.parse(ev.target.result);
+      collectIds().forEach(id=>{
+        if(data[id]!==undefined){
+          const el = $(id);
+          if(el.type==='checkbox') el.checked = data[id]; else el.value = data[id];
+        }
+      });
+      if(data.rule){
+        const r = document.querySelector(`input[name="rule"][value="${data.rule}"]`);
+        if(r) r.checked = true;
+        $('customRulePct').style.display = data.rule==='custom' ? 'inline-block':'none';
+      }
+      if(data.comps){
+        compsBody.innerHTML = '';
+        data.comps.forEach(addCompRow);
+      }
+      if(data.draws){
+        drawsBody.innerHTML = '';
+        data.draws.forEach(addDrawRow);
+      }
+      $('financePanel').classList.toggle('show', $('financeToggle').checked);
+      $('drawSchedulePanel').style.display = $('useDrawSchedule').checked ? 'block' : 'none';
+      $('closeoutFields').style.display = $('dealClosed').checked ? 'block' : 'none';
+      calc();
+    }catch(err){ alert('Could not read that file: '+err.message); }
+  };
+  reader.readAsText(file);
+});
+$('printBtn').addEventListener('click', ()=>window.print());
+$('resetBtn').addEventListener('click', ()=>{
+  if(confirm('Reset all fields for a new property? Export first if you want to keep this analysis.')) location.reload();
+});
+$('p_none_heavy_offered').addEventListener('change', function(){
+  $('p_none_heavy_inputs').style.opacity = this.checked ? '1' : '.4';
+});
+$('resetParamsBtn').addEventListener('click', ()=>{
+  if(confirm("Reset all Program Parameters to GoingFlip's current defaults? This clears any custom rates, caps, fees, or limits you've entered.")){
+    params = cloneDefaults();
+    saveParams();
+    applyParamsToUI();
+    calc();
+  }
+});
+
+function attemptUnlock(){
+  const entered = $('adm_pinInput').value.trim();
+  $('adm_pinInput').value = '';
+  if(!entered) return;
+  if(simpleHash(entered) === getPinHash()){
+    adminUnlocked = true;
+    sessionStorage.setItem('flipmuchFFAdminUnlocked','1');
+    $('pinError').style.display = 'none';
+    refreshLockUI();
+  } else {
+    $('pinError').style.display = 'block';
+  }
+}
+$('unlockBtn').addEventListener('click', attemptUnlock);
+$('adm_pinInput').addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); attemptUnlock(); } });
+$('lockBtn').addEventListener('click', ()=>{
+  adminUnlocked = false;
+  sessionStorage.removeItem('flipmuchFFAdminUnlocked');
+  refreshLockUI();
+});
+$('updatePinBtn').addEventListener('click', ()=>{
+  const p1 = $('adm_newPin1').value.trim(), p2 = $('adm_newPin2').value.trim();
+  const msg = $('pinUpdateMsg');
+  msg.style.display = 'block';
+  if(!/^\d{4,8}$/.test(p1)){ msg.textContent = 'PIN must be 4–8 digits.'; return; }
+  if(p1 !== p2){ msg.textContent = 'PINs do not match.'; return; }
+  localStorage.setItem('flipmuchFFPinHash', simpleHash(p1));
+  $('adm_newPin1').value = ''; $('adm_newPin2').value = '';
+  msg.textContent = 'Admin PIN updated.';
+});
+
+/* ---------- Wire up live recalc ---------- */
+applyParamsToUI();
+refreshLockUI();
+document.querySelectorAll('input, select').forEach(el=>el.addEventListener('input', calc));
+document.querySelectorAll('select').forEach(el=>el.addEventListener('change', calc));
+calc();
+</script>
+
+</body>
+</html>

@@ -91,31 +91,65 @@ function saleWithinWindow(record, maxDaysOld) {
   return { saleDate: record.lastSaleDate, salePrice: record.lastSalePrice };
 }
 
+// CORS headers — allow the standalone HTML to call this endpoint from any origin
+// (including file:// and any custom domain). The key check below still guards access.
+const CORS_HEADERS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type",
+};
+
+export async function OPTIONS() {
+  return new Response(null, { status: 204, headers: CORS_HEADERS });
+}
+
 export async function GET(request) {
+  const { searchParams } = new URL(request.url);
+
+  // ── Auth: Supabase session OR standalone API key ──────────────────────────
+  // The standalone HTML file (Fix-and-Flip-Deal-Analyzer.html) can't carry a
+  // Supabase session cookie, so we allow a pre-shared key as an alternative.
+  // Set COMPS_STANDALONE_KEY in your Vercel env vars to enable this path.
+  const standaloneKey = searchParams.get("key");
+  const isStandalone = standaloneKey &&
+    process.env.COMPS_STANDALONE_KEY &&
+    standaloneKey === process.env.COMPS_STANDALONE_KEY;
+
+  let user = null;
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
+  if (!isStandalone) {
+    const { data: { user: u } } = await supabase.auth.getUser();
+    user = u;
+    if (!user) {
+      return NextResponse.json(
+        { error: "Not signed in. Use the GoingFlip app or provide a standalone API key." },
+        { status: 401, headers: CORS_HEADERS }
+      );
+    }
+  }
 
   if (!process.env.RENTCAST_API_KEY) {
     return NextResponse.json(
       { error: "Comps lookup isn't configured yet — missing RENTCAST_API_KEY." },
-      { status: 500 }
+      { status: 500, headers: CORS_HEADERS }
     );
   }
 
   // ── Usage tracking ─────────────────────────────────────────────────────────
-  // Read the user's pull count for the current calendar month BEFORE running
-  // the search, so we can include accurate usage info in the response.
+  // Standalone (key-auth) calls skip per-user tracking; authenticated app
+  // calls track usage by user ID for the monthly quota display.
   const currentMonth = new Date().toISOString().slice(0, 7); // 'YYYY-MM'
-  const { data: usageRow } = await supabase
-    .from("comp_usage")
-    .select("pull_count")
-    .eq("user_id", user.id)
-    .eq("month", currentMonth)
-    .single();
-  const pullsBefore = usageRow?.pull_count ?? 0;
+  let pullsBefore = 0;
+  if (user) {
+    const { data: usageRow } = await supabase
+      .from("comp_usage")
+      .select("pull_count")
+      .eq("user_id", user.id)
+      .eq("month", currentMonth)
+      .single();
+    pullsBefore = usageRow?.pull_count ?? 0;
+  }
 
-  const { searchParams } = new URL(request.url);
   const address = searchParams.get("address")?.trim();
   if (!address) return NextResponse.json({ error: "Address is required." }, { status: 400 });
 
@@ -321,17 +355,19 @@ export async function GET(request) {
     .slice(0, limit)
     .map(({ similarityScore, ...c }) => c);
 
-  // ── Increment usage counter ────────────────────────────────────────────────
-  // Upsert: if no row exists for this month, create it with count=1.
-  // If a row exists, increment by 1. This is done AFTER the search succeeds
-  // so a failed lookup doesn't count against the user's monthly quota.
-  const newPullCount = pullsBefore + 1;
-  await supabase.from("comp_usage").upsert(
-    { user_id: user.id, month: currentMonth, pull_count: newPullCount },
-    { onConflict: "user_id,month" }
-  );
-
-  const isPaidPull = newPullCount > FREE_COMP_PULLS;
+  // ── Increment usage counter (authenticated app calls only) ──────────────────
+  let newPullCount = pullsBefore + 1;
+  let isPaidPull = false;
+  if (user) {
+    await supabase.from("comp_usage").upsert(
+      { user_id: user.id, month: currentMonth, pull_count: newPullCount },
+      { onConflict: "user_id,month" }
+    );
+    isPaidPull = newPullCount > FREE_COMP_PULLS;
+  } else {
+    // Standalone key call — no per-user quota
+    newPullCount = 0;
+  }
 
   return NextResponse.json({
     comps: finalComps,
@@ -349,11 +385,11 @@ export async function GET(request) {
     requestedLimit: limit,
     apiCallsUsed: verificationCount + (usedAttempt ? attempts.indexOf(usedAttempt) + 1 : 0),
     // Usage info so the UI can show the user their monthly pull count.
-    usage: {
+    usage: user ? {
       pullsThisMonth: newPullCount,
       freeLimit: FREE_COMP_PULLS,
-      isPaidPull,             // true if this pull exceeded the free quota
+      isPaidPull,
       remaining: Math.max(0, FREE_COMP_PULLS - newPullCount),
-    },
-  });
+    } : null,
+  }, { headers: CORS_HEADERS });
 }
