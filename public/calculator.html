@@ -5,305 +5,432 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>GoingFlip | Fix &amp; Flip Deal Analyzer</title>
 <style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+
   :root{
-    --navy:#1f3147;
-    --navy-light:#2c4663;
-    --gold:#a9824c;
-    --cream:#f7f4ee;
-    --paper:#ffffff;
-    --line:#dcd6c9;
-    --ink:#2a2a2a;
-    --muted:#73706a;
-    --green:#1e7d4f;
-    --green-bg:#e7f4ec;
-    --amber:#9a6b0a;
-    --amber-bg:#fbf1dc;
-    --red:#a8302b;
-    --red-bg:#fbe9e7;
+    /* Core palette — high contrast dark theme */
+    --bg:#0d1117;
+    --bg2:#161b22;
+    --card:#161b22;
+    --border:#21262d;
+    --border-hi:#30363d;
+    --accent:#38bdf8;       /* sky-400 — readable on dark */
+    --accent-dim:rgba(56,189,248,0.10);
+    --accent-glow:rgba(56,189,248,0.22);
+    --gold:#fbbf24;         /* amber-400 */
+    --gold-dim:rgba(251,191,36,0.10);
+    --text:#f0f6fc;         /* near-white */
+    --text2:#8b949e;        /* secondary */
+    --muted:#6e7681;
+    --green:#3fb950;
+    --green-bg:rgba(63,185,80,0.10);
+    --amber:#d29922;
+    --amber-bg:rgba(210,153,34,0.10);
+    --red:#f85149;
+    --red-bg:rgba(248,81,73,0.10);
+    /* aliases for backward compat with JS-generated markup */
+    --navy:#38bdf8;
+    --navy-light:#7dd3fc;
+    --ink:#f0f6fc;
+    --line:#21262d;
+    --paper:#161b22;
+    --cream:#0d1117;
   }
+
   *{box-sizing:border-box;}
-  html, body{
+  body{
     margin:0;
-    font-family:"Helvetica Neue", Arial, sans-serif;
-    background:var(--cream);
-    color:var(--ink);
-    line-height:1.4;
+    font-family:'Inter','Helvetica Neue',Arial,sans-serif;
+    background:var(--bg);
+    color:var(--text);
+    line-height:1.55;
+    font-size:14px;
   }
+
+  /* ── HEADER ── */
   header{
-    background:var(--navy);
+    background:#0d1117;
     color:#fff;
-    padding:22px 28px;
+    padding:18px 28px;
     display:flex;
     align-items:center;
     gap:18px;
-    border-bottom:4px solid var(--gold);
+    position:relative;
+  }
+  header::after{
+    content:'';
+    position:absolute;
+    bottom:0;left:0;right:0;
+    height:1px;
+    background:linear-gradient(90deg,var(--accent),var(--gold),transparent 80%);
   }
   .wordmark{display:flex;flex-direction:column;line-height:1;}
   .wordmark .brandname{
-    font-family:Georgia,'Times New Roman',serif;
-    font-weight:700;
-    font-size:28px;
-    letter-spacing:1px;
-    color:#fff;
+    font-weight:900;
+    font-size:24px;
+    letter-spacing:-0.5px;
+    color:var(--accent);
   }
   header .titles{
     margin-left:14px;
     padding-left:18px;
-    border-left:1px solid rgba(255,255,255,0.25);
+    border-left:1px solid #30363d;
   }
   header h1{
     margin:0;
-    font-size:19px;
-    font-weight:600;
-    font-family:Georgia,'Times New Roman',serif;
+    font-size:16px;
+    font-weight:700;
+    color:var(--text);
+    letter-spacing:-0.2px;
   }
   header p{
-    margin:3px 0 0;
-    font-size:12.5px;
-    color:#cfd6dd;
+    margin:2px 0 0;
+    font-size:12px;
+    color:var(--text2);
   }
 
+  /* ── STICKY SUMMARY BAR ── */
   .summary-bar{
     position:sticky;
     top:0;
     z-index:50;
-    background:var(--paper);
-    border-bottom:1px solid var(--line);
-    box-shadow:0 2px 6px rgba(0,0,0,0.06);
-    padding:14px 28px;
+    background:rgba(13,17,23,0.97);
+    backdrop-filter:blur(10px);
+    -webkit-backdrop-filter:blur(10px);
+    border-bottom:1px solid var(--border);
+    box-shadow:0 2px 16px rgba(0,0,0,0.5);
+    padding:10px 20px;
     display:flex;
-    flex-wrap:wrap;
+    flex-wrap:nowrap;          /* NO wrapping — bar scrolls */
     align-items:center;
-    gap:22px;
+    gap:20px;
+    overflow-x:auto;
+    -webkit-overflow-scrolling:touch;
+    scrollbar-width:none;
   }
+  .summary-bar::-webkit-scrollbar{display:none;}
+
   .verdict-badge{
-    padding:8px 16px;
+    flex-shrink:0;
+    padding:6px 14px;
     border-radius:6px;
     font-weight:700;
-    font-size:14px;
-    letter-spacing:.3px;
+    font-size:11px;
+    letter-spacing:.6px;
+    text-transform:uppercase;
     white-space:nowrap;
   }
-  .verdict-badge.green{background:var(--green-bg);color:var(--green);}
-  .verdict-badge.amber{background:var(--amber-bg);color:var(--amber);}
-  .verdict-badge.red{background:var(--red-bg);color:var(--red);}
-  .metric{display:flex;flex-direction:column;min-width:90px;}
-  .metric .lbl{font-size:10.5px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);}
-  .metric .val{font-size:17px;font-weight:700;color:var(--navy);}
+  .verdict-badge.green{background:var(--green-bg);color:var(--green);border:1px solid rgba(63,185,80,0.3);}
+  .verdict-badge.amber{background:var(--amber-bg);color:var(--amber);border:1px solid rgba(210,153,34,0.3);}
+  .verdict-badge.red{background:var(--red-bg);color:var(--red);border:1px solid rgba(248,81,73,0.3);}
+
+  .metric{display:flex;flex-direction:column;flex-shrink:0;min-width:80px;}
+  .metric .lbl{
+    font-size:9px;text-transform:uppercase;letter-spacing:.7px;
+    color:var(--muted);font-weight:600;white-space:nowrap;
+  }
+  .metric .val{
+    font-size:15px;font-weight:800;color:#fff;
+    letter-spacing:-0.3px;white-space:nowrap;
+    margin-top:1px;
+  }
   .metric .val.neg{color:var(--red);}
 
-  main{max-width:1180px;margin:0 auto;padding:26px 28px 60px;}
-  .grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
-  @media (max-width:920px){.grid{grid-template-columns:1fr;}}
+  /* ── MAIN LAYOUT ── */
+  main{max-width:1200px;margin:0 auto;padding:24px 20px 80px;}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+  @media(max-width:880px){.grid{grid-template-columns:1fr;}}
 
+  /* ── CARDS ── */
   .card{
-    background:var(--paper);
-    border:1px solid var(--line);
-    border-radius:8px;
-    padding:20px 22px;
-    margin-bottom:20px;
+    background:var(--card);
+    border:1px solid var(--border);
+    border-radius:10px;
+    padding:20px 20px;
+    margin-bottom:16px;
   }
   .card h2{
     margin:0 0 4px;
-    font-family:Georgia,'Times New Roman',serif;
-    font-size:16px;
-    color:var(--navy);
+    font-size:14.5px;
+    font-weight:700;
+    color:var(--text);
     display:flex;
     align-items:center;
-    gap:8px;
+    gap:9px;
+    letter-spacing:-0.2px;
   }
   .card h2 .num{
-    background:var(--navy);
-    color:#fff;
-    width:22px;height:22px;
-    border-radius:50%;
-    font-size:12px;
+    background:var(--accent);
+    color:#0d1117;
+    width:21px;height:21px;
+    border-radius:5px;
+    font-size:11px;
+    font-weight:800;
     display:inline-flex;align-items:center;justify-content:center;
-    font-family:"Helvetica Neue", Arial, sans-serif;
+    flex-shrink:0;
   }
-  .card .sub{font-size:12px;color:var(--muted);margin:0 0 16px;}
+  .card .sub{font-size:11.5px;color:var(--text2);margin:0 0 14px;line-height:1.5;}
   .full{grid-column:1/-1;}
 
-  .field-row{display:flex;flex-wrap:wrap;gap:14px;margin-bottom:12px;}
-  .field{flex:1 1 150px;display:flex;flex-direction:column;gap:5px;}
-  .field.narrow{flex:0 0 110px;}
-  label{font-size:11.5px;font-weight:600;color:var(--navy-light);text-transform:uppercase;letter-spacing:.3px;}
-  input[type=text], input[type=number], select{
-    border:1px solid #c9c2b3;
-    border-radius:5px;
-    padding:8px 9px;
-    font-size:14px;
-    font-family:inherit;
-    background:#fffdf9;
-    color:var(--ink);
+  /* ── FORM FIELDS ── */
+  .field-row{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:10px;}
+  .field{flex:1 1 140px;display:flex;flex-direction:column;gap:4px;}
+  .field.narrow{flex:0 0 100px;}
+  label{font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;}
+  input[type=text],input[type=number],input[type=date],select{
+    border:1px solid var(--border-hi);
+    border-radius:6px;
+    padding:8px 10px;
+    font-size:13.5px;
+    font-weight:500;
+    font-family:'Inter',inherit;
+    background:#0d1117;
+    color:var(--text);          /* bright near-white */
+    transition:border-color .15s,box-shadow .15s;
+    -webkit-appearance:none;
   }
-  input:focus, select:focus{outline:2px solid var(--gold);outline-offset:1px;}
-  .hint{font-size:11px;color:var(--muted);margin-top:2px;}
+  input[type=text]:hover,input[type=number]:hover,input[type=date]:hover,select:hover{
+    border-color:#484f58;
+  }
+  input:focus,select:focus{
+    outline:none;
+    border-color:var(--accent);
+    box-shadow:0 0 0 3px var(--accent-glow);
+  }
+  select option{background:#161b22;color:var(--text);}
+
+  .hint{font-size:11px;color:var(--muted);margin-top:3px;line-height:1.5;}
+
   .inline-btn{
-    border:1px solid var(--navy);
-    background:#fff;
-    color:var(--navy);
-    border-radius:5px;
-    padding:7px 10px;
+    border:1px solid var(--border-hi);
+    background:transparent;
+    color:var(--text2);
+    border-radius:6px;
+    padding:7px 13px;
     font-size:12px;
     font-weight:600;
+    font-family:'Inter',inherit;
     cursor:pointer;
     white-space:nowrap;
+    transition:all .15s;
   }
-  .inline-btn:hover{background:var(--navy);color:#fff;}
-  .inline-btn.gold{border-color:var(--gold);color:var(--gold);}
-  .inline-btn.gold:hover{background:var(--gold);color:#fff;}
+  .inline-btn:hover{
+    background:var(--accent-dim);
+    border-color:var(--accent);
+    color:var(--accent);
+  }
+  .inline-btn.gold{border-color:rgba(251,191,36,0.35);color:var(--gold);}
+  .inline-btn.gold:hover{background:var(--gold-dim);border-color:var(--gold);}
 
+  /* ── TABLES ── */
   table{width:100%;border-collapse:collapse;font-size:13px;}
   table th{
-    text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.3px;
-    color:var(--muted);border-bottom:1px solid var(--line);padding:6px 6px;
+    text-align:left;font-size:9.5px;text-transform:uppercase;letter-spacing:.5px;
+    font-weight:700;color:var(--muted);border-bottom:1px solid var(--border);padding:7px 7px;
   }
-  table td{padding:5px 6px;border-bottom:1px solid #ece7da;}
-  table input{width:100%;padding:6px 7px;font-size:13px;}
-  .comp-foot td{font-weight:700;color:var(--navy);border-bottom:none;padding-top:10px;}
-  .rm-btn{background:none;border:none;color:var(--red);font-size:16px;cursor:pointer;line-height:1;}
-  tr.comp-renovated{background:rgba(169,130,76,0.08);}
-  .renovated-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--gold);vertical-align:middle;}
-  .sale-badge{display:inline-block;font-size:10px;font-weight:700;padding:1px 5px;border-radius:3px;vertical-align:middle;margin-right:4px;letter-spacing:.02em;}
-  .sale-badge.verified{background:#1f7a3d;color:#fff;}
-  .sale-badge.unverified{background:#b8860b;color:#fff;}
+  table td{padding:6px 7px;border-bottom:1px solid rgba(33,38,45,0.8);color:var(--text);}
+  table input{width:100%;padding:5px 7px;font-size:13px;}
+  .comp-foot td{font-weight:700;color:var(--accent);border-bottom:none;padding-top:10px;}
+  .rm-btn{background:none;border:none;color:var(--red);font-size:16px;cursor:pointer;line-height:1;opacity:.75;}
+  .rm-btn:hover{opacity:1;}
 
+  /* ── RADIO GROUPS ── */
   .radio-group{display:flex;gap:18px;align-items:center;flex-wrap:wrap;}
   .radio-group label.opt{
-    display:flex;align-items:center;gap:6px;font-weight:500;
-    text-transform:none;letter-spacing:0;color:var(--ink);font-size:13.5px;
+    display:flex;align-items:center;gap:7px;font-weight:500;
+    text-transform:none;letter-spacing:0;color:var(--text);font-size:13px;cursor:pointer;
   }
-  .radio-group input[type=radio]{accent-color:var(--navy);width:15px;height:15px;}
+  .radio-group input[type=radio]{accent-color:var(--accent);width:15px;height:15px;}
 
+  /* ── MAO / METRIC BOXES ── */
   .mao-box{
-    margin-top:14px;padding:14px 16px;border-radius:6px;background:#f3f0e7;
-    border:1px solid var(--line);display:flex;flex-wrap:wrap;gap:24px;align-items:center;
+    margin-top:12px;padding:14px 16px;border-radius:8px;
+    background:rgba(56,189,248,0.04);
+    border:1px solid rgba(56,189,248,0.12);
+    display:flex;flex-wrap:wrap;gap:20px;align-items:center;
   }
+  .mao-box .metric .val{color:var(--accent);}
   .mao-box .pass{color:var(--green);font-weight:700;}
   .mao-box .fail{color:var(--red);font-weight:700;}
 
-  .toggle-row{display:flex;align-items:center;gap:10px;margin-bottom:16px;}
-  .switch{position:relative;display:inline-block;width:46px;height:24px;}
+  /* ── TOGGLE SWITCH ── */
+  .toggle-row{display:flex;align-items:center;gap:10px;margin-bottom:14px;}
+  .toggle-row span{font-size:13.5px;font-weight:600;color:var(--text);}
+  .switch{position:relative;display:inline-block;width:44px;height:24px;}
   .switch input{opacity:0;width:0;height:0;}
-  .slider{position:absolute;cursor:pointer;inset:0;background:#c9c2b3;border-radius:24px;transition:.2s;}
-  .slider:before{position:absolute;content:"";height:18px;width:18px;left:3px;bottom:3px;background:white;border-radius:50%;transition:.2s;}
-  input:checked + .slider{background:var(--navy);}
-  input:checked + .slider:before{transform:translateX(22px);}
+  .slider{position:absolute;cursor:pointer;inset:0;background:#21262d;border-radius:24px;transition:.2s;border:1px solid var(--border-hi);}
+  .slider:before{position:absolute;content:"";height:16px;width:16px;left:3px;bottom:3px;background:var(--muted);border-radius:50%;transition:.2s;}
+  input:checked+.slider{background:rgba(56,189,248,0.15);border-color:var(--accent);}
+  input:checked+.slider:before{transform:translateX(20px);background:var(--accent);}
   #financePanel{display:none;}
   #financePanel.show{display:block;}
+
+  /* ── WARNINGS ── */
   .warn{
-    background:var(--amber-bg);color:var(--amber);border:1px solid #e3cf9c;
-    padding:8px 12px;border-radius:5px;font-size:12.5px;margin-top:10px;
+    background:rgba(210,153,34,0.08);color:var(--amber);
+    border:1px solid rgba(210,153,34,0.3);
+    padding:9px 13px;border-radius:6px;font-size:12.5px;margin-top:10px;
   }
 
-  details.settings{margin-top:18px;border:1px dashed var(--line);border-radius:6px;padding:2px 14px 14px;background:#fbfaf6;}
-  details.settings summary{cursor:pointer;font-weight:700;color:var(--navy);padding:10px 0;font-size:13px;list-style:none;display:flex;align-items:center;gap:8px;}
+  /* ── DETAILS / SETTINGS ── */
+  details.settings{
+    margin-top:16px;border:1px solid var(--border);
+    border-radius:8px;padding:2px 16px 14px;background:#0d1117;
+  }
+  details.settings summary{
+    cursor:pointer;font-weight:700;color:var(--text2);padding:10px 0;
+    font-size:11.5px;list-style:none;display:flex;align-items:center;gap:8px;
+    text-transform:uppercase;letter-spacing:.6px;transition:color .15s;
+  }
+  details.settings summary:hover{color:var(--accent);}
   details.settings summary::-webkit-details-marker{display:none;}
-  details.settings summary:before{content:"▸";display:inline-block;transition:transform .15s;font-size:11px;}
+  details.settings summary:before{content:"▸";display:inline-block;transition:transform .15s;font-size:10px;color:var(--accent);}
   details.settings[open] summary:before{transform:rotate(90deg);}
+
   .param-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px 14px;margin-top:8px;}
   .param-field{display:flex;flex-direction:column;gap:4px;}
   .param-field label{font-size:10px;}
-  .param-field input{padding:6px 7px;font-size:13px;}
+  .param-field input{padding:6px 8px;font-size:13px;}
   table.param-table{width:100%;border-collapse:collapse;font-size:12px;margin-top:6px;}
-  table.param-table th{font-size:9.5px;text-transform:uppercase;color:var(--muted);text-align:center;padding:4px;border-bottom:1px solid var(--line);}
-  table.param-table td{padding:4px;text-align:center;}
-  table.param-table td:first-child{text-align:left;font-weight:600;color:var(--navy-light);}
+  table.param-table th{font-size:9.5px;text-transform:uppercase;color:var(--muted);text-align:center;padding:5px;border-bottom:1px solid var(--border);}
+  table.param-table td{padding:4px;text-align:center;border-bottom:1px solid rgba(33,38,45,0.6);color:var(--text);}
+  table.param-table td:first-child{text-align:left;font-weight:600;color:var(--text2);}
   table.param-table input{width:62px;text-align:center;padding:5px 4px;font-size:12.5px;}
-  .pin-gate{padding:18px 16px;text-align:center;background:#fff;border:1px solid var(--line);border-radius:6px;margin-top:8px;}
-  .pin-gate input[type=password]{width:120px;text-align:center;letter-spacing:4px;font-size:16px;padding:8px;display:inline-block;margin:0 8px 10px 0;}
-  .pin-gate .pin-err{color:#b3261e;font-size:12px;margin-top:6px;display:none;}
+
+  /* ── PIN GATE ── */
+  .pin-gate{
+    padding:18px;text-align:center;background:#0d1117;
+    border:1px solid var(--border);border-radius:8px;margin-top:8px;
+  }
+  .pin-gate input[type=password]{
+    width:120px;text-align:center;letter-spacing:5px;font-size:16px;
+    padding:8px;display:inline-block;margin:0 8px 10px 0;
+    background:#0d1117;border:1px solid var(--border-hi);color:var(--text);border-radius:6px;
+  }
+  .pin-gate .pin-err{color:var(--red);font-size:12px;margin-top:6px;display:none;}
   .admin-row{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:4px;flex-wrap:wrap;}
-  .pin-change{margin-top:18px;padding-top:14px;border-top:1px dashed var(--line);}
+  .pin-change{margin-top:16px;padding-top:14px;border-top:1px solid var(--border);}
   .pin-change input{width:100px;text-align:center;letter-spacing:3px;margin-right:8px;}
 
+  /* ── DEAL BREAKDOWN TABLE ── */
   .breakdown{width:100%;border-collapse:collapse;font-size:13.5px;}
-  .breakdown td{padding:7px 4px;border-bottom:1px solid #ece7da;}
-  .breakdown td.amt{text-align:right;font-weight:600;color:var(--navy);white-space:nowrap;}
-  .breakdown tr.total td{border-top:2px solid var(--navy);border-bottom:none;font-weight:700;padding-top:10px;}
-  .breakdown tr.profit td{font-weight:700;font-size:15px;color:var(--navy);}
+  .breakdown td{padding:7px 5px;border-bottom:1px solid rgba(33,38,45,0.7);color:var(--text);}
+  .breakdown td.amt{text-align:right;font-weight:700;color:#fff;white-space:nowrap;}
+  .breakdown tr.total td{
+    border-top:1px solid var(--accent);border-bottom:none;
+    font-weight:800;padding-top:10px;font-size:14px;color:var(--text);
+  }
+  .breakdown tr.total td.amt{color:var(--accent);}
+  .breakdown tr.profit td{font-weight:800;font-size:15px;color:var(--text);}
+  .breakdown tr.profit td.amt{color:var(--green);}
   .breakdown tr.profit td.amt.neg{color:var(--red);}
-  .section-label td{padding-top:14px;font-weight:700;color:var(--navy-light);font-size:11.5px;text-transform:uppercase;letter-spacing:.4px;border-bottom:none;}
+  .section-label td{
+    padding-top:14px;font-weight:700;color:var(--accent);font-size:10px;
+    text-transform:uppercase;letter-spacing:.8px;border-bottom:none;
+  }
 
-  .actions{display:flex;gap:10px;flex-wrap:wrap;margin:24px 0 8px;}
+  /* ── RANGE SLIDER ── */
+  input[type=range]{
+    -webkit-appearance:none;appearance:none;
+    width:100%;height:4px;border-radius:2px;
+    background:var(--border-hi);outline:none;cursor:pointer;
+  }
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none;appearance:none;
+    width:16px;height:16px;border-radius:50%;
+    background:var(--accent);cursor:pointer;
+  }
+
+  /* ── ACTIONS ── */
+  .actions{display:flex;gap:10px;flex-wrap:wrap;margin:22px 0 8px;}
+
+  /* ── FOOTER ── */
   footer{
-    max-width:1180px;margin:0 auto;padding:0 28px 50px;font-size:11.5px;color:var(--muted);
+    max-width:1200px;margin:0 auto;
+    padding:20px 20px 50px;
+    font-size:11px;color:var(--muted);line-height:1.6;
+    border-top:1px solid var(--border);
   }
-  /* ── Mobile responsive ──────────────────────────────── */
-  @media (max-width:600px){
-    header{padding:14px 16px;gap:10px;}
-    .wordmark .brandname{font-size:22px;}
-    header h1{font-size:15px;}
-    header p{font-size:11px;}
 
-    .summary-bar{
-      padding:10px 14px;
-      gap:10px 16px;
-      overflow-x:auto;
-      flex-wrap:nowrap;
-      -webkit-overflow-scrolling:touch;
+
+  /* ── MOBILE COMPS CARDS ── */
+  @media(max-width:640px){
+    /* Status message: always on its own full-width line */
+    #compsStatus{ flex-basis:100% !important; margin-top:2px; line-height:1.4; }
+
+    #compsTable, #compsTable tbody { display:block; }
+    #compsTable thead { display:none; }
+    #compsTable tfoot { display:block; }
+    #compsTable tfoot tr {
+      display:flex; justify-content:flex-end; align-items:center;
+      gap:8px; padding:6px 2px; border:none; background:none;
     }
-    .verdict-badge{font-size:12px;padding:6px 10px;flex-shrink:0;}
-    .metric{min-width:70px;flex-shrink:0;}
-    .metric .lbl{font-size:9.5px;}
-    .metric .val{font-size:14px;}
+    #compsTable tfoot tr td:first-child { display:none; }
 
-    main{padding:14px 12px 50px;}
-    .grid{grid-template-columns:1fr;}
-    .card{padding:14px 14px;}
-    .card h2{font-size:14px;}
+    /* Each comp = card */
+    #compsTable tbody tr {
+      display:block; position:relative;
+      background:var(--paper); border:1px solid var(--line);
+      border-radius:8px; padding:10px; margin-bottom:10px;
+      box-sizing:border-box;
+    }
 
-    .field-row{gap:10px;}
-    .field{flex:1 1 140px;}
-    .field.narrow{flex:0 0 90px;}
-    input[type=text], input[type=number], select{font-size:16px;} /* prevent iOS zoom */
+    /* Row 1: Address full width */
+    #compsTable tbody tr td:nth-child(1){
+      display:block; padding-right:34px; margin-bottom:8px;
+    }
+    #compsTable .c-addr{ width:100% !important; box-sizing:border-box; }
 
-    /* Comps table → two-row card layout on mobile */
-    .comp-table-wrap{overflow-x:visible;}
-    .comp-table-wrap table{display:block;min-width:0;width:100%;}
-    .comp-table-wrap thead{display:none;}
-    .comp-table-wrap tbody{display:block;}
-    .comp-table-wrap tfoot{display:none;}
-    .comp-table-wrap tbody tr{display:flex;flex-wrap:wrap;gap:5px;padding:10px 0 8px;border-bottom:1px solid #e8e3d9;align-items:flex-end;}
-    .comp-table-wrap tbody tr td{display:block;}
-    /* ── Row 1: address + ✕ ──────────────────────────── */
-    /* Address fills row 1 minus the ✕ button */
-    .comp-table-wrap tbody tr td:first-child{order:1;flex:0 0 calc(100% - 38px);}
-    .comp-table-wrap tbody tr td:first-child input{width:100%!important;box-sizing:border-box;}
-    /* ✕ button: right end of row 1 */
-    .comp-table-wrap tbody tr td:last-child{order:1;flex:0 0 auto;align-self:center;}
-    /* ── Row 2: labeled numeric fields ──────────────── */
-    .comp-table-wrap tbody tr td.td-dist {order:2;flex:1 1 40px;}
-    .comp-table-wrap tbody tr td.td-beds {order:2;flex:1 1 36px;}
-    .comp-table-wrap tbody tr td.td-baths{order:2;flex:1 1 36px;}
-    .comp-table-wrap tbody tr td.td-sqft {order:2;flex:2 1 68px;}
-    .comp-table-wrap tbody tr td.td-price{order:2;flex:2 1 80px;}
-    .comp-table-wrap tbody tr td.c-ppsf  {order:2;flex:0 0 auto;align-self:flex-end;font-size:11px;white-space:nowrap;padding-bottom:7px;}
-    /* All inputs fill their cell */
-    .comp-table-wrap tbody tr td input{width:100%!important;box-sizing:border-box;font-size:16px;padding:6px 4px;}
-    /* Label above each numeric field */
-    .comp-table-wrap tbody tr td[data-label]::before{content:attr(data-label);display:block;font-size:9px;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:0.3px;margin-bottom:2px;}
+    /* Delete: absolute top-right */
+    #compsTable tbody tr td:nth-child(8){
+      position:absolute; top:10px; right:10px; display:flex; align-items:center;
+    }
 
-    .mao-box{gap:12px;}
-    .param-grid{grid-template-columns:1fr 1fr;}
-    .admin-row{flex-direction:column;align-items:flex-start;}
+    /* Row 2: Dist Beds Baths — 3 equal items */
+    #compsTable tbody tr td:nth-child(2),
+    #compsTable tbody tr td:nth-child(3),
+    #compsTable tbody tr td:nth-child(4){
+      display:inline-block; width:calc(33.3% - 6px);
+      margin-right:6px; margin-bottom:8px; vertical-align:top; box-sizing:border-box;
+    }
+    #compsTable tbody tr td:nth-child(4){ margin-right:0; }
 
-    /* Toggle: keep switch on its own line if text wraps */
-    .toggle-row{flex-wrap:wrap;gap:8px;}
-    .toggle-row .switch{flex-shrink:0;align-self:flex-start;margin-top:2px;}
+    /* Row 3: Sqft + Sale Price — 2 items */
+    #compsTable tbody tr td:nth-child(5){
+      display:inline-block; width:calc(35% - 6px);
+      margin-right:6px; margin-bottom:8px; vertical-align:top; box-sizing:border-box;
+    }
+    #compsTable tbody tr td:nth-child(6){
+      display:inline-block; width:calc(65% - 0px);
+      margin-right:0; margin-bottom:8px; vertical-align:top; box-sizing:border-box;
+    }
 
-    /* Breakdown: scroll horizontally so amounts are never clipped */
-    .breakdown-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
-    .breakdown{min-width:320px;font-size:12.5px;}
+    #compsTable .c-dist, #compsTable .c-beds, #compsTable .c-baths,
+    #compsTable .c-sqft, #compsTable .c-price{
+      width:100% !important; box-sizing:border-box;
+    }
 
-    footer{padding:0 14px 40px;}
+    /* Row 4: $/sf right-aligned */
+    #compsTable tbody tr td:nth-child(7){
+      display:block; text-align:right;
+      font-size:15px; font-weight:600; padding-bottom:2px;
+    }
+
+    /* Mini labels */
+    #compsTable tbody tr td:nth-child(2)::before{ content:"Dist";       display:block; font-size:10px; color:var(--muted); margin-bottom:2px; }
+    #compsTable tbody tr td:nth-child(3)::before{ content:"Beds";       display:block; font-size:10px; color:var(--muted); margin-bottom:2px; }
+    #compsTable tbody tr td:nth-child(4)::before{ content:"Baths";      display:block; font-size:10px; color:var(--muted); margin-bottom:2px; }
+    #compsTable tbody tr td:nth-child(5)::before{ content:"Sqft";       display:block; font-size:10px; color:var(--muted); margin-bottom:2px; }
+    #compsTable tbody tr td:nth-child(6)::before{ content:"Sale Price"; display:block; font-size:10px; color:var(--muted); margin-bottom:2px; }
   }
 
+  /* ── PRINT ── */
   @media print{
-    .summary-bar{position:static;}
-    .actions, .inline-btn, .rm-btn{display:none !important;}
-    header{background:var(--navy)!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+    body{background:#fff;color:#000;}
+    .summary-bar{position:static;background:#fff;overflow:visible;}
+    .actions,.inline-btn,.rm-btn{display:none!important;}
+    .card{background:#fff;border:1px solid #ddd;color:#000;}
+    header{background:#1f3147!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
   }
 </style>
 </head>
@@ -366,24 +493,29 @@
   <div class="card full">
     <h2 style="margin-bottom:10px;"><span class="num">2</span> Sales Comparables</h2>
 
-    <!-- Primary action row -->
+    <!-- Plan info — always visible -->
+    <div id="planInfoBox" style="display:flex;align-items:flex-start;gap:10px;background:var(--accent-dim);border:1px solid var(--accent);border-radius:6px;padding:10px 14px;margin-bottom:12px;font-size:12.5px;color:var(--text);line-height:1.6;">
+      <div>
+        <strong style="color:var(--accent);">Plan included:</strong> 10 comparable searches/month &nbsp;·&nbsp; Each search pulls up to 8 comparable properties &nbsp;·&nbsp; <strong>$3.00</strong> per additional search after 10
+      </div>
+    </div>
+
     <div style="display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:8px;">
       <button class="inline-btn gold" id="findCompsBtn" type="button">🔍 Find Sold Comps</button>
       <button type="button" id="searchOptsToggle" style="background:none;border:1px solid var(--line);border-radius:5px;padding:5px 11px;font-size:12.5px;color:var(--muted);cursor:pointer;">⚙️ Search options</button>
-      <button type="button" id="howCompsToggle" style="background:none;border:none;padding:4px 6px;font-size:12.5px;color:var(--muted);cursor:pointer;text-decoration:underline dotted;">ℹ️ How this works</button>
-      <span class="muted" id="compsStatus" style="font-size:13px;flex:1;min-width:0;"></span>
+      <span id="compsStatus" style="font-size:13px;color:var(--muted);flex:1;min-width:0;"></span>
     </div>
 
-    <!-- Search options panel (hidden by default) -->
     <div id="searchOptsPanel" style="display:none;background:var(--cream);border:1px solid var(--line);border-radius:6px;padding:14px 16px;margin-bottom:12px;">
       <div style="font-size:11.5px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin-bottom:10px;font-weight:600;">Search Options</div>
       <div style="display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end;">
         <div class="field" style="min-width:120px;">
           <label style="font-size:12px;">Comps to find</label>
           <select id="optCompCount" style="width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:4px;font-size:13px;background:var(--paper);">
-            <option value="3" selected>3 (default)</option>
-            <option value="4">4</option>
             <option value="5">5</option>
+            <option value="8" selected>8 (default)</option>
+            <option value="10">10</option>
+            <option value="15">15</option>
           </select>
         </div>
         <div class="field" style="min-width:140px;">
@@ -404,20 +536,13 @@
             <option value="365">12 months</option>
           </select>
         </div>
-        <p style="font-size:11.5px;color:var(--muted);margin:4px 0 0;width:100%;line-height:1.5;">Auto settings escalate automatically — starts tight and widens only if needed. Override here to lock a specific range.</p>
+        <p style="font-size:11.5px;color:var(--muted);margin:4px 0 0;width:100%;line-height:1.5;">Auto settings escalate automatically — starts tight and widens only if needed.</p>
       </div>
     </div>
 
-    <!-- How it works panel (hidden by default) -->
-    <div id="howCompsPanel" style="display:none;background:var(--cream);border:1px solid var(--line);border-radius:6px;padding:14px 16px;margin-bottom:12px;font-size:12.5px;color:var(--ink);line-height:1.65;">
-      <strong>Manual search only</strong> — never runs automatically. Fill in Sq. Ft., Beds, Baths, and Year Built for the subject property first — comps are matched against those exact values.<br><br>
-      The search finds confirmed county-recorded deed sales only (<span class="sale-badge verified" style="font-size:11px;">SOLD</span> badge). Active listings, pending, under contract, withdrawn, and expired properties are excluded. It starts within 1.5 mi / 90 days and widens up to 3 mi / 12 months until it finds enough comps.<br><br>
-      Comps with a higher $/sq.ft. than the local median (<span class="renovated-dot"></span> gold dot) are favored slightly — these likely reflect post-renovation resale values, which is what a flip will sell at. Always verify condition and lot size against MLS before using.
-    </div>
-
     <div id="compUsageBanner" style="display:none;margin-bottom:10px;padding:8px 12px;border-radius:5px;font-size:12.5px;line-height:1.5;"></div>
-    <div class="comp-table-wrap">
-    <table>
+
+    <table id="compsTable">
       <thead>
         <tr><th style="width:26%">Address</th><th>Distance (mi)</th><th>Beds</th><th>Baths</th><th>Sq. Ft.</th><th>Sale Price</th><th>$ / Sq.Ft.</th><th></th></tr>
       </thead>
@@ -431,7 +556,6 @@
         </tr>
       </tfoot>
     </table>
-    </div>
     <div class="actions" style="margin-top:12px;">
       <button class="inline-btn" id="addCompBtn" type="button">+ Add Comp</button>
     </div>
@@ -479,48 +603,39 @@
     </div>
 
     <div class="card">
-      <!-- Section 4 header with summary + gear toggle -->
-      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:4px;">
-        <h2 style="margin:0;"><span class="num">4</span> Fees &amp; Closing Costs</h2>
-        <button type="button" id="feesToggleBtn" style="display:flex;align-items:center;gap:6px;background:none;border:1px solid var(--line);border-radius:5px;padding:5px 12px;font-size:12.5px;color:var(--muted);cursor:pointer;">
-          ⚙️ <span id="feesToggleLabel">Edit fees</span>
-        </button>
+      <h2><span class="num">4</span> Inspection, Appraisal, Closing &amp; Sale-Prep Fees</h2>
+      <div class="field-row">
+        <div class="field">
+          <label>Home Inspection Fee</label>
+          <input type="number" id="inspectionFee" value="325" min="0">
+          <span class="hint" id="inspectionHint"></span>
+        </div>
+        <div class="field" style="flex:0 0 auto;align-self:flex-end;">
+          <button class="inline-btn" id="estInspectionBtn" type="button">Estimate from features</button>
+        </div>
       </div>
-      <!-- Summary line (visible when collapsed) -->
-      <div id="feesSummaryLine" style="font-size:13px;color:var(--muted);margin-bottom:4px;line-height:1.6;">
-        Inspection <strong id="sumInspection">$325</strong> · Appraisal <strong id="sumAppraisal">$450</strong> · Realtor sale <strong id="sumRealtor">6%</strong> · Closing <strong id="sumClosing">2.5%</strong>
+      <div class="field-row">
+        <div class="field">
+          <label>Appraisal Fee</label>
+          <input type="number" id="appraisalFee" value="450" min="0">
+          <span class="hint" id="appraisalHint"></span>
+        </div>
+        <div class="field" style="flex:0 0 auto;align-self:flex-end;">
+          <button class="inline-btn" id="estAppraisalBtn" type="button">Estimate from features</button>
+        </div>
       </div>
+      <div class="field-row">
+        <div class="field narrow"><label>Realtor Fee — Purchase %</label><input type="number" id="realtorPurchasePct" value="0" min="0" step="0.1"></div>
+        <div class="field narrow"><label>Realtor Fee — Sale %</label><input type="number" id="realtorSalePct" value="6" min="0" step="0.1"></div>
+        <div class="field narrow"><label>Purchase Closing %</label><input type="number" id="purchaseClosingPct" value="1.5" min="0" step="0.1"></div>
+        <div class="field narrow"><label>Sale Closing %</label><input type="number" id="saleClosingPct" value="1" min="0" step="0.1"></div>
+      </div>
+      <p class="hint">Purchase % applies to Purchase Price; Sale % and Sale Closing % apply to ARV. Estimates are editable — confirm with your inspector, appraiser and agent.</p>
 
-      <!-- Hidden fee fields panel -->
-      <div id="feesPanel" style="display:none;margin-top:10px;">
-        <div class="field-row">
-          <div class="field">
-            <label>Home Inspection Fee</label>
-            <input type="number" id="inspectionFee" value="325" min="0">
-            <span class="hint" id="inspectionHint"></span>
-          </div>
-          <div class="field" style="flex:0 0 auto;align-self:flex-end;">
-            <button class="inline-btn" id="estInspectionBtn" type="button">Estimate from features</button>
-          </div>
-        </div>
-        <div class="field-row">
-          <div class="field">
-            <label>Appraisal Fee</label>
-            <input type="number" id="appraisalFee" value="450" min="0">
-            <span class="hint" id="appraisalHint"></span>
-          </div>
-          <div class="field" style="flex:0 0 auto;align-self:flex-end;">
-            <button class="inline-btn" id="estAppraisalBtn" type="button">Estimate from features</button>
-          </div>
-        </div>
-        <div class="field-row">
-          <div class="field narrow"><label>Realtor Fee — Purchase %</label><input type="number" id="realtorPurchasePct" value="0" min="0" step="0.1"></div>
-          <div class="field narrow"><label>Realtor Fee — Sale %</label><input type="number" id="realtorSalePct" value="6" min="0" step="0.1"></div>
-          <div class="field narrow"><label>Purchase Closing %</label><input type="number" id="purchaseClosingPct" value="1.5" min="0" step="0.1"></div>
-          <div class="field narrow"><label>Sale Closing %</label><input type="number" id="saleClosingPct" value="1" min="0" step="0.1"></div>
-        </div>
-        <p class="hint">Purchase % applies to Purchase Price; Sale % and Sale Closing % apply to ARV.</p>
-
+      <button type="button" id="feesToggleBtn" style="display:flex;align-items:center;gap:6px;background:none;border:1px solid var(--line);border-radius:5px;padding:5px 12px;font-size:12.5px;color:var(--muted);cursor:pointer;margin-top:8px;margin-bottom:4px;">
+        <span>⚙️</span><span id="feesToggleBtnLabel">Additional Fees</span>
+      </button>
+      <div id="feesPanel" style="display:none;">
         <div class="field-row" style="margin-top:4px;">
           <div class="field narrow"><label>Title Insurance — Purchase</label><input type="number" id="titleInsPurchase" value="0" min="0"></div>
           <div class="field narrow"><label>Title Insurance — Sale</label><input type="number" id="titleInsSale" value="0" min="0"></div>
@@ -528,15 +643,15 @@
           <div class="field narrow"><label>Survey Fee</label><input type="number" id="surveyFee" value="0" min="0"></div>
           <div class="field narrow"><label>Escrow Fee</label><input type="number" id="escrowFee" value="0" min="0"></div>
         </div>
-        <p class="hint">Transfer/Recording Tax % applies to Purchase Price. Confirm exact amounts with your title company.</p>
+        <p class="hint">Transfer/Recording Tax % applies to Purchase Price. These are typically due at purchase or sale closing — confirm exact amounts with your title company for your county.</p>
 
         <div class="field-row" style="margin-top:10px;">
           <div class="field narrow"><label>Staging Cost</label><input type="number" id="stagingCost" value="0" min="0"></div>
           <div class="field narrow"><label>MLS / Marketing Fee</label><input type="number" id="marketingFee" value="0" min="0"></div>
           <div class="field narrow"><label>Buyer Concession % of ARV</label><input type="number" id="buyerConcessionPct" value="0" min="0" step="0.1"></div>
         </div>
-        <p class="hint">Staging, marketing, and buyer closing-cost concessions — all added to total project cost.</p>
-      </div>
+        <p class="hint">Staging, marketing, and any buyer closing-cost concession you offer to move the sale — all added to total project cost.</p>
+      </div><!-- /feesPanel -->
     </div>
 
     <div class="card">
@@ -565,41 +680,46 @@
       <span style="font-size:13.5px;font-weight:600;">This project will be financed</span>
     </div>
     <div id="financePanel">
-      <div class="field-row">
-        <div class="field">
-          <label>Borrower Experience Tier</label>
-          <select id="expTier">
-            <option value="inst">Institutional 10+ ($10M+ track record)</option>
-            <option value="exp" selected>Experienced 3–9 ($5M+ track record)</option>
-            <option value="none">0–2 / No Experience</option>
-          </select>
-          <p class="hint" style="margin-top:4px;">Tier requires BOTH the stated deal count AND a verified dollar track record (Institutional $10M+, Experienced $5M+). Until verified, GoingFlip quotes the conservative 0–2/No Experience tier.</p>
+      <button type="button" id="loanOptsToggle" style="display:flex;align-items:center;gap:6px;background:none;border:1px solid var(--line);border-radius:5px;padding:5px 12px;font-size:12.5px;color:var(--muted);cursor:pointer;margin-bottom:8px;">
+        <span>⚙️</span><span id="loanOptsToggleLabel">Loan Options</span>
+      </button>
+      <div id="loanOptsPanel" style="display:none;">
+        <div class="field-row">
+          <div class="field">
+            <label>Borrower Experience Tier</label>
+            <select id="expTier">
+              <option value="inst">Institutional 10+ ($10M+ track record)</option>
+              <option value="exp" selected>Experienced 3–9 ($5M+ track record)</option>
+              <option value="none">0–2 / No Experience</option>
+            </select>
+            <p class="hint" style="margin-top:4px;">Tier requires BOTH the stated deal count AND a verified dollar track record (Institutional $10M+, Experienced $5M+). Until verified, GoingFlip quotes the conservative 0–2/No Experience tier.</p>
+          </div>
+          <div class="field">
+            <label>Borrower FICO</label>
+            <select id="ficoBucket">
+              <option value="680">680+</option>
+              <option value="660">660–679 (-10% leverage, Experienced+ only, no cash-out)</option>
+              <option value="below660">Below 660 (ineligible)</option>
+            </select>
+          </div>
+          <div class="field"><label>Appraised As-Is Value (AIV)</label><input type="number" id="aivAppraisal" value="180000" min="0"></div>
         </div>
-        <div class="field">
-          <label>Borrower FICO</label>
-          <select id="ficoBucket">
-            <option value="680">680+</option>
-            <option value="660">660–679 (-10% leverage, Experienced+ only, no cash-out)</option>
-            <option value="below660">Below 660 (ineligible)</option>
-          </select>
+        <p class="hint">As-Is Value used for underwriting = lesser of Purchase Price or this appraised AIV.</p>
+        <div class="field-row">
+          <label class="opt" style="display:flex;align-items:center;gap:6px;font-weight:500;text-transform:none;letter-spacing:0;color:var(--ink);font-size:13px;"><input type="checkbox" id="isCondo" style="width:15px;height:15px;accent-color:var(--navy);"> Condo</label>
+          <label class="opt" style="display:flex;align-items:center;gap:6px;font-weight:500;text-transform:none;letter-spacing:0;color:var(--ink);font-size:13px;"><input type="checkbox" id="isMultiFamily" style="width:15px;height:15px;accent-color:var(--navy);"> Multi-family (5+ units)</label>
+          <label class="opt" style="display:flex;align-items:center;gap:6px;font-weight:500;text-transform:none;letter-spacing:0;color:var(--ink);font-size:13px;"><input type="checkbox" id="isFLZip" style="width:15px;height:15px;accent-color:var(--navy);"> FL West Coast zip code</label>
+          <label class="opt" style="display:flex;align-items:center;gap:6px;font-weight:500;text-transform:none;letter-spacing:0;color:var(--ink);font-size:13px;"><input type="checkbox" id="decliningMarket" style="width:15px;height:15px;accent-color:var(--navy);"> Declining market (per appraisal)</label>
         </div>
-        <div class="field"><label>Appraised As-Is Value (AIV)</label><input type="number" id="aivAppraisal" value="180000" min="0"></div>
-      </div>
-      <p class="hint">As-Is Value used for underwriting = lesser of Purchase Price or this appraised AIV.</p>
-      <div class="field-row">
-        <label class="opt" style="display:flex;align-items:center;gap:6px;font-weight:500;text-transform:none;letter-spacing:0;color:var(--ink);font-size:13px;"><input type="checkbox" id="isCondo" style="width:15px;height:15px;accent-color:var(--navy);"> Condo</label>
-        <label class="opt" style="display:flex;align-items:center;gap:6px;font-weight:500;text-transform:none;letter-spacing:0;color:var(--ink);font-size:13px;"><input type="checkbox" id="isMultiFamily" style="width:15px;height:15px;accent-color:var(--navy);"> Multi-family (5+ units)</label>
-        <label class="opt" style="display:flex;align-items:center;gap:6px;font-weight:500;text-transform:none;letter-spacing:0;color:var(--ink);font-size:13px;"><input type="checkbox" id="isFLZip" style="width:15px;height:15px;accent-color:var(--navy);"> FL West Coast zip code</label>
-        <label class="opt" style="display:flex;align-items:center;gap:6px;font-weight:500;text-transform:none;letter-spacing:0;color:var(--ink);font-size:13px;"><input type="checkbox" id="decliningMarket" style="width:15px;height:15px;accent-color:var(--navy);"> Declining market (per appraisal)</label>
-      </div>
-      <div class="field-row">
-        <label class="opt" style="display:flex;align-items:center;gap:6px;font-weight:500;text-transform:none;letter-spacing:0;color:var(--ink);font-size:13px;"><input type="checkbox" id="glaIncrease25" style="width:15px;height:15px;accent-color:var(--navy);"> Work increases GLA by 25%+ (forces Heavy)</label>
-        <label class="opt" style="display:flex;align-items:center;gap:6px;font-weight:500;text-transform:none;letter-spacing:0;color:var(--ink);font-size:13px;"><input type="checkbox" id="usingGC" style="width:15px;height:15px;accent-color:var(--navy);"> Using a non-owner GC (+5% contingency)</label>
-        <div class="field narrow"><label>Interest Reserve %</label><input type="number" id="irPct" value="0" min="0" max="100" step="0.1"></div>
-        <div class="field narrow"><label>Loan Amt Override</label><input type="number" id="loanAmountManual" value="0" min="0"></div>
-        <div class="field narrow"><label>Origination Fee % Override</label><input type="number" id="origFeeOverride" value="0" min="0" max="4" step="0.05" placeholder="1.5"></div>
-      </div>
-      <p class="hint">Standard origination fee: 1.5% (0–9 experience tiers) / 1.0% (Institutional 10+), per GoingFlip's pricing matrix. Leave the override at 0 to use the tier default, or enter a special discounted rate (e.g. 0.5%) when GoingFlip offers one. Program max is 4%.</p>
+        <div class="field-row">
+          <label class="opt" style="display:flex;align-items:center;gap:6px;font-weight:500;text-transform:none;letter-spacing:0;color:var(--ink);font-size:13px;"><input type="checkbox" id="glaIncrease25" style="width:15px;height:15px;accent-color:var(--navy);"> Work increases GLA by 25%+ (forces Heavy)</label>
+          <label class="opt" style="display:flex;align-items:center;gap:6px;font-weight:500;text-transform:none;letter-spacing:0;color:var(--ink);font-size:13px;"><input type="checkbox" id="usingGC" style="width:15px;height:15px;accent-color:var(--navy);"> Using a non-owner GC (+5% contingency)</label>
+          <div class="field narrow"><label>Interest Reserve %</label><input type="number" id="irPct" value="0" min="0" max="100" step="0.1"></div>
+          <div class="field narrow"><label>Loan Amt Override</label><input type="number" id="loanAmountManual" value="0" min="0"></div>
+          <div class="field narrow"><label>Origination Fee % Override</label><input type="number" id="origFeeOverride" value="0" min="0" max="4" step="0.05" placeholder="1.5"></div>
+        </div>
+        <p class="hint">Standard origination fee: 1.5% (0–9 experience tiers) / 1.0% (Institutional 10+), per GoingFlip's pricing matrix. Leave the override at 0 to use the tier default, or enter a special discounted rate (e.g. 0.5%) when GoingFlip offers one. Program max is 4%.</p>
+      </div><!-- /loanOptsPanel -->
 
       <div class="mao-box">
         <div class="metric"><span class="lbl">Budget / AIV</span><span class="val" id="budgetRatioDisplay">0%</span></div>
@@ -822,7 +942,6 @@
 
   <div class="card full">
     <h2><span class="num">7</span> Full Deal Breakdown</h2>
-    <div class="breakdown-wrap">
     <table class="breakdown">
       <tr class="section-label"><td colspan="2">Costs</td></tr>
       <tr><td>Purchase Price</td><td class="amt" id="b-purchase">$0</td></tr>
@@ -848,7 +967,6 @@
       <tr><td>Cash-on-Cash ROI</td><td class="amt" id="b-roi">0%</td></tr>
       <tr><td>Annualized ROI</td><td class="amt" id="b-aroi">0%</td></tr>
     </table>
-    </div>
     <div class="field-row" style="margin-top:18px;">
       <div class="field narrow"><label>Target Annualized ROI %</label><input type="number" id="targetRoi" value="20" min="0"></div>
       <div class="field" style="flex:2;"><span class="hint" style="margin-top:22px;" id="verdictExplain"></span></div>
@@ -958,7 +1076,12 @@ function loadParams(){
         // a previous session can never leave the live params object incomplete.
         const merged = cloneDefaults();
         Object.keys(merged).forEach(k=>{ if(saved[k]!==undefined) merged[k]=saved[k]; });
-        return merged;
+        // Sanity-check: if key matrix leverage caps are all zero the blob is corrupted
+        // (readParamsFromUI ran against empty inputs). Discard and use clean defaults.
+        const m = merged.matrix;
+        const capsOk = m.inst.light.ltaiv > 0 && m.exp.light.ltarv > 0 && m.none.light.ltaiv > 0;
+        if(capsOk) return merged;
+        try{ localStorage.removeItem('flipmuchFFParams'); }catch(_){}
       }
     }
   }catch(e){}
@@ -1120,199 +1243,148 @@ function readParamsFromUI(){
 
 /* ---------- Comps table ---------- */
 const compsBody = $('compsBody');
+let compPool    = [];  // all fetched comps sorted by distance (set by fetchComps)
+let compPoolIdx = 0;   // index of next pool comp not yet shown
+const POOL_DISPLAY = 3; // how many comps to show at a time
+
+function showNextFromPool(){
+  if(compPoolIdx < compPool.length){
+    const c = compPool[compPoolIdx++];
+    addCompRow(c);
+  }
+}
+
 function addCompRow(data){
   data = data || {};
   const tr = document.createElement('tr');
-  if(data.renovated){
-    tr.classList.add('comp-renovated');
-    tr.title = 'Likely remodeled/updated resale — price per sq.ft. is at or above the local comp pool median.';
-  }
-  let saleBadge = '';
-  if (data.verified === true) {
-    saleBadge = `<span class="sale-badge verified" title="${data.soldDate ? 'Confirmed closed sale ('+data.soldDate.slice(0,10)+') from county deed records' : 'Confirmed closed sale from county deed records'}">SOLD</span> `;
-  } else if (data.verified === false) {
-    saleBadge = '<span class="sale-badge unverified" title="Off-market, but the recorded sale price wasn\'t available to confirm (e.g. non-disclosure state) — verify manually">UNCONF.</span> ';
-  }
   tr.innerHTML = `
-    <td>${saleBadge}${data.renovated ? '<span class="renovated-dot" title="Likely remodeled/updated"></span> ' : ''}<input type="text" class="c-addr" value="${data.addr||''}" placeholder="456 Oak Ave, City, ST"></td>
-    <td class="td-dist"  data-label="Dist mi"><input type="number" class="c-dist"  value="${data.dist||''}"  step="0.1" style="width:70px;"></td>
-    <td class="td-beds"  data-label="Beds">   <input type="number" class="c-beds"  value="${data.beds||''}"             style="width:55px;"></td>
-    <td class="td-baths" data-label="Baths">  <input type="number" class="c-baths" value="${data.baths||''}" step="0.5" style="width:55px;"></td>
-    <td class="td-sqft"  data-label="Sq.Ft."> <input type="number" class="c-sqft"  value="${data.sqft||''}"             style="width:80px;"></td>
-    <td class="td-price" data-label="Sale Price"><input type="number" class="c-price" value="${data.price||''}"          style="width:100px;"></td>
-    <td class="c-ppsf" data-label="$/sf" style="font-weight:600;color:var(--navy);">—</td>
+    <td><input type="text" class="c-addr" value="${data.addr||''}" placeholder="456 Oak Ave"></td>
+    <td><input type="number" class="c-dist" value="${data.dist||''}" step="0.1" style="width:70px;"></td>
+    <td><input type="number" class="c-beds" value="${data.beds||''}" style="width:55px;"></td>
+    <td><input type="number" class="c-baths" value="${data.baths||''}" step="0.5" style="width:55px;"></td>
+    <td><input type="number" class="c-sqft" value="${data.sqft||''}" style="width:80px;"></td>
+    <td><input type="number" class="c-price" value="${data.price||''}" style="width:100px;"></td>
+    <td class="c-ppsf" style="font-weight:600;color:var(--navy);">—</td>
     <td><button type="button" class="rm-btn" title="Remove comp">✕</button></td>
   `;
   tr.querySelectorAll('input').forEach(i=>i.addEventListener('input', calc));
-  tr.querySelector('.rm-btn').addEventListener('click', ()=>{tr.remove(); calc();});
+  tr.querySelector('.rm-btn').addEventListener('click', ()=>{tr.remove(); showNextFromPool(); calc();});
   compsBody.appendChild(tr);
 }
 $('addCompBtn').addEventListener('click', ()=>addCompRow());
-[{addr:'',dist:1.0,beds:3,baths:2,sqft:1550,price:265000},
- {addr:'',dist:1.4,beds:3,baths:2,sqft:1620,price:272000},
- {addr:'',dist:1.8,beds:3,baths:1.5,sqft:1480,price:255000}].forEach(addCompRow);
 
-/* ---------- Sold-comps lookup (RentCast via /api/comps) ----------
-   Manual only — never auto-fires on address entry/blur. Comps are matched
-   against the Sq. Ft. / Beds / Baths / Year Built typed into the Subject
-   Property card above, so searching before those are filled in with the
-   REAL subject specs (not just whatever default was sitting in the field)
-   would silently match against the wrong property profile. To prevent
-   that: the button requires all four fields to be filled in, and every
-   status message echoes back the exact specs that were used so it's never
-   ambiguous what the search was based on. */
-const findCompsBtn = $('findCompsBtn');
-const compsStatusEl = $('compsStatus');
-
-/* Fees panel toggle */
-(function(){
-  const btn = $('feesToggleBtn');
-  const panel = $('feesPanel');
-  const lbl = $('feesToggleLabel');
-  if(!btn) return;
-  btn.addEventListener('click', () => {
-    const open = panel.style.display !== 'none';
-    panel.style.display = open ? 'none' : 'block';
-    lbl.textContent = open ? 'Edit fees' : 'Close';
-    btn.style.color = open ? 'var(--muted)' : 'var(--navy)';
-    btn.style.borderColor = open ? 'var(--line)' : 'var(--navy)';
-  });
-  // Keep the summary line updated whenever fee inputs change
-  function updateFeesSummary(){
-    const insp = num('inspectionFee');
-    const appr = num('appraisalFee');
-    const rSale = num('realtorSalePct');
-    const pClose = num('purchaseClosingPct');
-    const sClose = num('saleClosingPct');
-    const el = $('sumInspection'); if(el) el.textContent = '$'+Math.round(insp).toLocaleString();
-    const el2 = $('sumAppraisal'); if(el2) el2.textContent = '$'+Math.round(appr).toLocaleString();
-    const el3 = $('sumRealtor'); if(el3) el3.textContent = rSale+'%';
-    const el4 = $('sumClosing'); if(el4) el4.textContent = (pClose+sClose).toFixed(1)+'%';
-  }
-  ['inspectionFee','appraisalFee','realtorSalePct','purchaseClosingPct','saleClosingPct'].forEach(id=>{
-    const el = $(id); if(el) el.addEventListener('input', updateFeesSummary);
-  });
-  updateFeesSummary();
-})();
-
-/* Search options + how-it-works toggles */
-$('searchOptsToggle').addEventListener('click', () => {
+/* ---------- Search options toggle ---------- */
+$('searchOptsToggle').addEventListener('click', ()=>{
   const p = $('searchOptsPanel');
   const open = p.style.display !== 'none';
   p.style.display = open ? 'none' : 'block';
   $('searchOptsToggle').style.color = open ? 'var(--muted)' : 'var(--navy)';
   $('searchOptsToggle').style.borderColor = open ? 'var(--line)' : 'var(--navy)';
 });
-$('howCompsToggle').addEventListener('click', () => {
-  const p = $('howCompsPanel');
-  p.style.display = p.style.display !== 'none' ? 'none' : 'block';
-});
+
+/* ---------- Sold-comps lookup (RentCast via /api/comps) ----------
+   Works when this file is served from the same domain as the GoingFlip
+   Next.js app (Vercel). The COMPS_KEY is a pre-shared secret that lets
+   the API skip Supabase login for standalone use. */
+
+// ── Deployment URL ──────────────────────────────────────────────────────────
+// Leave empty to use the same-origin relative path (works on Vercel).
+// Set to your full Vercel URL if you want comps to work when the file is
+// opened locally as a file://, e.g.:
+//   const COMPS_API_BASE = 'https://project-k4ljv.vercel.app';
+const COMPS_API_BASE = window.location.protocol === 'file:' ? 'https://www.goingflip.com' : '';
+const COMPS_KEY = 'gf2026sa';  // Must match COMPS_STANDALONE_KEY in Vercel env vars
+
+const findCompsBtn = $('findCompsBtn');
+const compsStatusEl = $('compsStatus');
 const compUsageBanner = $('compUsageBanner');
 
 function showUsageBanner(usage){
   if(!usage) return;
   const { pullsThisMonth, freeLimit, isPaidPull, remaining } = usage;
-  // Notify the parent wrapper (CalculatorApp) so the topbar badge updates.
-  try{ window.parent.postMessage({ type:'flipmuch:comp-searched', usage }, '*'); }catch(_){}
-
+  compUsageBanner.style.cssText = 'display:block;margin-bottom:10px;padding:9px 13px;border-radius:5px;font-size:12.5px;line-height:1.5;';
   if(isPaidPull){
-    compUsageBanner.style.display = 'block';
-    compUsageBanner.style.background = '#fbe9e7';
-    compUsageBanner.style.border = '1px solid #f5c0b0';
-    compUsageBanner.style.color = '#7a2020';
-    compUsageBanner.innerHTML = `
-      <strong>⚠️ Overage pull #${pullsThisMonth - freeLimit}</strong> — Your plan includes
-      ${freeLimit} free comparable searches per month. This search exceeds that limit and will be
-      billed at your plan's overage rate. Contact us if you need a higher-volume plan.`;
+    compUsageBanner.style.cssText += 'background:#fbe9e7;border:1px solid #f5c0b0;color:#7a2020;';
+    compUsageBanner.innerHTML = `<strong>⚠️ Overage search #${pullsThisMonth - freeLimit}</strong> — This search is billed at $3.00. Your plan includes ${freeLimit} searches/month (up to 8 comparable properties each).`;
   } else if(remaining <= 2){
-    compUsageBanner.style.display = 'block';
-    compUsageBanner.style.background = '#fbf1dc';
-    compUsageBanner.style.border = '1px solid #f0c96a';
-    compUsageBanner.style.color = '#7a4e00';
-    compUsageBanner.innerHTML = `
-      <strong>⏳ ${remaining} free pull${remaining===1?'':'s'} remaining this month</strong>
-      (${pullsThisMonth} of ${freeLimit} used) — Additional comparable searches beyond
-      ${freeLimit}/month are billed at a small overage rate based on your subscription plan.`;
+    compUsageBanner.style.cssText += 'background:#fbf1dc;border:1px solid #f0c96a;color:#7a4e00;';
+    compUsageBanner.innerHTML = `<strong>⏳ ${remaining} search${remaining===1?'':'es'} remaining</strong> this month (${pullsThisMonth} of ${freeLimit} used) — each pulls up to 8 comparable properties. Additional searches are $3.00 each.`;
   } else {
-    compUsageBanner.style.display = 'block';
-    compUsageBanner.style.background = '#e7f4ec';
-    compUsageBanner.style.border = '1px solid #a3d9b5';
-    compUsageBanner.style.color = '#1a5c35';
-    compUsageBanner.innerHTML = `
-      <strong>✓ ${pullsThisMonth} of ${freeLimit} free pulls used this month</strong>
-      — ${remaining} remaining. Additional searches beyond ${freeLimit}/month are billed
-      at a small overage rate.`;
+    compUsageBanner.style.cssText += 'background:#e7f4ec;border:1px solid #a3d9b5;color:#1a5c35;';
+    compUsageBanner.innerHTML = `<strong>✓ ${pullsThisMonth} of ${freeLimit} searches used this month</strong> — ${remaining} remaining. Each search pulls up to 8 comparable properties.`;
   }
-}
-
-function specsSummary(sqft, beds, baths, year){
-  return `${sqft} sqft / ${beds}bd / ${baths}ba / built ${year}`;
+  try{ window.parent.postMessage({ type:'flipmuch:comp-searched', usage }, '*'); }catch(_){}
 }
 
 async function fetchComps(){
-  const address = $('subAddress').value.trim();
-  const sqft = $('subSqft').value.trim();
-  const beds = $('subBeds').value.trim();
-  const baths = $('subBaths').value.trim();
-  const year = $('subYear').value.trim();
+  const address = ($('subAddress')||{}).value?.trim() || '';
+  const sqft  = ($('subSqft')||{}).value?.trim()  || '';
+  const beds  = ($('subBeds')||{}).value?.trim()  || '';
+  const baths = ($('subBaths')||{}).value?.trim() || '';
+  const year  = ($('subYear')||{}).value?.trim()  || '';
+  if(!address){ compsStatusEl.textContent = 'Enter the subject property address (Section 1) before searching.'; return; }
+  if(!sqft||!beds||!baths||!year){ compsStatusEl.textContent = 'Fill in Sq. Ft., Beds, Baths, and Year Built (Section 1) before searching — comps are matched against those values.'; return; }
 
-  if(!address){
-    compsStatusEl.textContent = 'Enter the subject property address above, then confirm Sq. Ft. / Beds / Baths / Year Built before searching.';
-    return;
-  }
-  if(!sqft || !beds || !baths || !year){
-    compsStatusEl.textContent = 'Fill in Sq. Ft., Beds, Baths, and Year Built above for THIS property before searching — comps are matched against those values, so leaving the defaults in place can match the wrong property profile.';
-    return;
-  }
-
-  const units = Number($('subUnits').value) || 1;
+  const units = Number(($('subUnits')||{}).value)||1;
   const propertyType = units > 1 ? 'Multi-Family' : 'Single Family';
-  const specs = specsSummary(sqft, beds, baths, year);
-
-  compsStatusEl.textContent = `Searching sold comps using ${specs}…`;
+  compsStatusEl.textContent = `Searching sold comps for ${sqft} sqft / ${beds}bd / ${baths}ba / built ${year}…`;
   findCompsBtn.disabled = true;
 
   try{
-    const qs = new URLSearchParams({ address, sqft, beds, baths, propertyType });
-    // Pro search options (only sent when user explicitly overrides the defaults)
-    const optLimit = $('optCompCount')?.value; if(optLimit) qs.set('limit', optLimit);
-    const optRadius = $('optRadius')?.value;   if(optRadius) qs.set('maxRadius', optRadius);
-    const optDays = $('optDays')?.value;       if(optDays) qs.set('maxDaysOld', optDays);
-    const res = await fetch('/api/comps?' + qs.toString());
+    const qs = new URLSearchParams({ address, sqft, beds, baths, propertyType, key: COMPS_KEY });
+    const optLimit  = $('optCompCount')?.value; if(optLimit)  qs.set('limit', optLimit);
+    const optRadius = $('optRadius')?.value;    if(optRadius) qs.set('maxRadius', optRadius);
+    const optDays   = $('optDays')?.value;      if(optDays)   qs.set('maxDaysOld', optDays);
+    const res = await fetch(COMPS_API_BASE + '/api/comps?' + qs.toString());
     const json = await res.json();
     if(!res.ok) throw new Error(json.error || 'Comps lookup failed.');
 
     const comps = json.comps || [];
     compsBody.innerHTML = '';
-    comps.forEach(c=>{
-      addCompRow({ addr:c.address, dist:c.distance, beds:c.beds, baths:c.baths, sqft:c.sqft, price:c.price, renovated:c.likelyRenovated, verified:c.verified, soldDate:c.soldDate });
-    });
 
-    if(comps.length === 0){
-      compsStatusEl.textContent = `No confirmed sold comps found for ${specs} even after widening to 12 months/3 mi (active, pending, under-contract, and withdrawn listings were excluded) — add comps manually below, or re-check the subject specs above and search again.`;
+    // Outlier filter: drop comps where $/sqft < 40% of the median (catches land sales, typos, etc.)
+    const withPpsf = comps.filter(c => c.sqft > 0 && c.price > 0)
+      .map(c => ({ ...c, ppsf: c.price / c.sqft }));
+    const sorted = [...withPpsf].sort((a,b) => a.ppsf - b.ppsf);
+    const mid = Math.floor(sorted.length / 2);
+    const medianPpsfRaw = sorted.length
+      ? (sorted.length % 2 ? sorted[mid].ppsf : (sorted[mid-1].ppsf + sorted[mid].ppsf) / 2)
+      : 0;
+    const threshold = medianPpsfRaw * 0.40;
+    const filtered = withPpsf.filter(c => c.ppsf >= threshold);
+    const dropped  = comps.length - filtered.length;
+
+    // Sort by distance; store full list in pool; display only closest 3
+    compPool = filtered
+      .map(c => ({ addr:c.address, dist:c.distance, beds:c.beds, baths:c.baths, sqft:c.sqft, price:c.price }))
+      .sort((a,b) => (a.dist||99) - (b.dist||99));
+    compPoolIdx = Math.min(POOL_DISPLAY, compPool.length);
+
+    compsBody.innerHTML = '';
+    compPool.slice(0, POOL_DISPLAY).forEach(c => addCompRow(c));
+
+    if(!filtered.length && !comps.length){
+      compsStatusEl.textContent = 'No confirmed sold comps found even after widening to 12 months / 3 mi — add comps manually or re-check subject specs.';
     } else {
-      const radiusTxt = json.radiusUsed ? `${json.radiusUsed} mi` : '—';
-      const monthsTxt = json.daysOldUsed ? `${Math.round(json.daysOldUsed/30)} mo` : '—';
-      const renoCount = comps.filter(c=>c.likelyRenovated).length;
-      const requested = json.requestedLimit || comps.length;
-      const shortfall = requested - comps.length;
-      let msg = `Searched using ${specs}. Found ${comps.length} confirmed sold comp(s) — verified against county deed records — within ${radiusTxt}, last ${monthsTxt}. ${renoCount} flagged as likely remodeled (gold dot).`;
-      if (shortfall > 0) {
-        msg += ` Only ${comps.length} of the requested ${requested} confirmed sales were available even after widening to 12 months/3 mi — this is a thin market; verify these comps carefully and add more manually if needed.`;
-      }
-      msg += ' Active, pending/under-contract, and withdrawn listings were excluded outright. Verify condition/lot size against MLS.';
-      compsStatusEl.textContent = msg;
+      const r = json.radiusUsed ? `${json.radiusUsed} mi` : '—';
+      const m = json.daysOldUsed ? `${Math.round(json.daysOldUsed/30)} mo` : '—';
+      const droppedNote = dropped > 0 ? ` (${dropped} outlier${dropped>1?'s':''} removed — likely land/lot sales)` : '';
+      const poolNote = compPool.length > POOL_DISPLAY ? ` Showing 3 of ${compPool.length} pulled — delete any to see the next closest.` : '';
+      compsStatusEl.textContent = `Found ${compPool.length} sold comp(s) within ${r}, last ${m}.${droppedNote}${poolNote}`;
     }
     showUsageBanner(json.usage);
     calc();
   } catch(err){
-    compsStatusEl.textContent = `Comps lookup failed: ${err.message}`;
+    compsStatusEl.textContent = `Comps lookup failed: ${err.message}. To use live comps, deploy the GoingFlip app to Vercel and set COMPS_API_BASE to that URL.`;
   } finally {
     findCompsBtn.disabled = false;
   }
 }
-
 findCompsBtn.addEventListener('click', fetchComps);
+
+[{addr:'123 Oak Ave, Tampa, FL 33605',dist:0.8,beds:3,baths:2,sqft:1550,price:265000},
+ {addr:'847 Maple Dr, Tampa, FL 33605',dist:1.2,beds:3,baths:2,sqft:1620,price:272000},
+ {addr:'512 Pine St, Tampa, FL 33605',dist:1.7,beds:3,baths:1.5,sqft:1480,price:255000}].forEach(addCompRow);
 
 /* ---------- Use Itemized Carrying Cost Total ---------- */
 $('useItemizedBtn').addEventListener('click', ()=>{
@@ -1331,11 +1403,11 @@ function addDrawRow(data){
     <td><button type="button" class="rm-btn" title="Remove draw">✕</button></td>
   `;
   tr.querySelectorAll('input').forEach(i=>i.addEventListener('input', calc));
-  tr.querySelector('.rm-btn').addEventListener('click', ()=>{tr.remove(); calc();});
+  tr.querySelector('.rm-btn').addEventListener('click', ()=>{tr.remove(); showNextFromPool(); calc();});
   drawsBody.appendChild(tr);
 }
 $('addDrawBtn').addEventListener('click', ()=>addDrawRow());
-$('useDrawSchedule').addEventListener('change', function(){
+$('useDrawSchedule').addEventListener('click', function(){
   $('drawSchedulePanel').style.display = this.checked ? 'block' : 'none';
   calc();
 });
@@ -1371,9 +1443,27 @@ document.querySelectorAll('input[name="rule"]').forEach(r=>{
 $('customRulePct').addEventListener('input', calc);
 
 /* ---------- Finance toggle ---------- */
-$('financeToggle').addEventListener('change', function(){
+// Use 'click' instead of 'change' — iOS Safari styled checkboxes (.switch)
+// often don't fire 'change'; 'click' is reliable on all platforms.
+$('financeToggle').addEventListener('click', function(){
   $('financePanel').classList.toggle('show', this.checked);
   calc();
+});
+
+/* ---------- Loan Options toggle ---------- */
+$('loanOptsToggle').addEventListener('click', function(){
+  const panel = $('loanOptsPanel');
+  const open = panel.style.display === 'none';
+  panel.style.display = open ? 'block' : 'none';
+  $('loanOptsToggleLabel').textContent = open ? 'Loan Options ▲' : 'Loan Options';
+});
+
+/* ---------- Additional Fees toggle ---------- */
+$('feesToggleBtn').addEventListener('click', function(){
+  const panel = $('feesPanel');
+  const open = panel.style.display === 'none';
+  panel.style.display = open ? 'block' : 'none';
+  $('feesToggleBtnLabel').textContent = open ? 'Additional Fees ▲' : 'Additional Fees';
 });
 
 /* ---------- Estimate buttons ---------- */
@@ -1510,8 +1600,9 @@ function calc(){
   $('m-rule').textContent = withinRule ? "Within "+rulePct+"%" : "Over "+rulePct+"%";
   $('m-rule').className = "val " + (withinRule? "":"neg");
 
-  // Financing — flipmuch Fix & Flip matrix (editable via the Program Parameters panel)
-  readParamsFromUI();
+  // Financing — GoingFlip Fix & Flip matrix (editable via the Program Parameters panel)
+  // Only re-read from DOM inputs when admin panel is open — prevents zero-writes to localStorage.
+  if(adminUnlocked) readParamsFromUI();
 
   const financed = $('financeToggle').checked;
   let day1=0, holdback=0, tla=0, monthlyIO=0, totalInterest=0, pointsCost=0, balloon=0,
@@ -1876,8 +1967,7 @@ function collectIds(){
     .filter(id=>!id.startsWith('p_') && !id.startsWith('adm_'));
 }
 // Single source of truth for serializing/restoring a deal — used by both the
-// file-based Export/Import buttons below AND the postMessage bridge further
-// down, so the two can never drift out of sync as fields get added later.
+// file-based Export/Import buttons AND the postMessage bridge so they can never drift.
 function flipmuchExportData(){
   const data = {};
   collectIds().forEach(id=>{
@@ -1919,6 +2009,23 @@ function flipmuchImportData(data){
   $('financePanel').classList.toggle('show', $('financeToggle').checked);
   $('drawSchedulePanel').style.display = $('useDrawSchedule').checked ? 'block' : 'none';
   $('closeoutFields').style.display = $('dealClosed').checked ? 'block' : 'none';
+  // Auto-open loan options panel if the loaded deal has non-default loan settings
+  (function(){
+    const hasNonDefault = $('expTier').value !== 'exp'
+      || $('ficoBucket').value !== '680'
+      || $('isCondo').checked || $('isMultiFamily').checked
+      || $('isFLZip').checked || $('decliningMarket').checked
+      || $('glaIncrease25').checked || num('loanAmountManual') > 0
+      || num('origFeeOverride') > 0;
+    const panel = $('loanOptsPanel');
+    const lbl = $('loanOptsToggleLabel');
+    const btn = $('loanOptsToggle');
+    if(hasNonDefault && panel && panel.style.display === 'none'){
+      panel.style.display = 'block';
+      if(lbl) lbl.textContent = 'Close';
+      if(btn){ btn.style.color = 'var(--navy)'; btn.style.borderColor = 'var(--navy)'; }
+    }
+  })();
   calc();
 }
 $('exportBtn').addEventListener('click', ()=>{
@@ -1997,8 +2104,8 @@ document.querySelectorAll('select').forEach(el=>el.addEventListener('change', ca
 calc();
 
 /* ---------- Flipmuch SaaS integration (postMessage bridge to parent app) ----------
-   Reuses flipmuchExportData()/flipmuchImportData() defined above (Export/Import
-   section) so the file-based and iframe-embedded paths can never drift apart. */
+   Reuses flipmuchExportData()/flipmuchImportData() defined above so the
+   file-based and iframe-embedded paths can never drift apart. */
 window.addEventListener('message', (event)=>{
   const msg = event.data || {};
   if(msg.type === 'flipmuch:request-export'){
@@ -2015,9 +2122,7 @@ window.addEventListener('message', (event)=>{
       calc();
     }
   } else if(msg.type === 'flipmuch:admin-unlock'){
-    // The parent app already verified the user is a signed-in admin
-    // (server-side role check) before embedding this iframe in admin mode,
-    // so the local PIN gate is redundant here — unlock the panel directly.
+    // The parent app already verified the user is admin — unlock directly.
     adminUnlocked = true;
     refreshLockUI();
   } else if(msg.type === 'flipmuch:request-params'){
