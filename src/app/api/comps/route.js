@@ -3,8 +3,8 @@ import { createClient } from "@/lib/supabase/server";
 
 const RENTCAST_AVM_BASE = "https://api.rentcast.io/v1/avm/value";
 const RENTCAST_RECORDS_BASE = "https://api.rentcast.io/v1/properties";
-const DEFAULT_COMP_LIMIT = 3;
-const MAX_COMP_LIMIT = 10;
+const DEFAULT_COMP_LIMIT = 8;
+const MAX_COMP_LIMIT = 15;
 // Number of comp pulls included in every subscription plan per calendar month.
 // Pulls 1–FREE_COMP_PULLS cost nothing extra; beyond this the user is warned
 // in the UI that the pull is billed at their plan's overage rate.
