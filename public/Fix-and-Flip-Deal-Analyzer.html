@@ -493,6 +493,14 @@
   <div class="card full">
     <h2 style="margin-bottom:10px;"><span class="num">2</span> Sales Comparables</h2>
 
+    <!-- Plan info — always visible -->
+    <div id="planInfoBox" style="display:flex;align-items:flex-start;gap:10px;background:var(--accent-dim);border:1px solid var(--accent);border-radius:6px;padding:10px 14px;margin-bottom:12px;font-size:12.5px;color:var(--text);line-height:1.6;">
+      <span style="font-size:15px;margin-top:1px;">📋</span>
+      <div>
+        <strong style="color:var(--accent);">Plan included:</strong> 10 comparable searches/month &nbsp;·&nbsp; Each search pulls up to 8 comparable properties &nbsp;·&nbsp; <strong>$3.00</strong> per additional search after 10
+      </div>
+    </div>
+
     <div style="display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:8px;">
       <button class="inline-btn gold" id="findCompsBtn" type="button">🔍 Find Sold Comps</button>
       <button type="button" id="searchOptsToggle" style="background:none;border:1px solid var(--line);border-radius:5px;padding:5px 11px;font-size:12.5px;color:var(--muted);cursor:pointer;">⚙️ Search options</button>
@@ -1295,16 +1303,16 @@ const compUsageBanner = $('compUsageBanner');
 function showUsageBanner(usage){
   if(!usage) return;
   const { pullsThisMonth, freeLimit, isPaidPull, remaining } = usage;
-  compUsageBanner.style.display = 'block';
+  compUsageBanner.style.cssText = 'display:block;margin-bottom:10px;padding:9px 13px;border-radius:5px;font-size:12.5px;line-height:1.5;';
   if(isPaidPull){
     compUsageBanner.style.cssText += 'background:#fbe9e7;border:1px solid #f5c0b0;color:#7a2020;';
-    compUsageBanner.innerHTML = `<strong>⚠️ Overage pull #${pullsThisMonth - freeLimit}</strong> — Your plan includes ${freeLimit} free comparable searches per month.`;
+    compUsageBanner.innerHTML = `<strong>⚠️ Overage search #${pullsThisMonth - freeLimit}</strong> — This search is billed at $3.00. Your plan includes ${freeLimit} searches/month (up to 8 comparable properties each).`;
   } else if(remaining <= 2){
     compUsageBanner.style.cssText += 'background:#fbf1dc;border:1px solid #f0c96a;color:#7a4e00;';
-    compUsageBanner.innerHTML = `<strong>⏳ ${remaining} free pull${remaining===1?'':'s'} remaining</strong> (${pullsThisMonth} of ${freeLimit} used this month).`;
+    compUsageBanner.innerHTML = `<strong>⏳ ${remaining} search${remaining===1?'':'es'} remaining</strong> this month (${pullsThisMonth} of ${freeLimit} used) — each pulls up to 8 comparable properties. Additional searches are $3.00 each.`;
   } else {
     compUsageBanner.style.cssText += 'background:#e7f4ec;border:1px solid #a3d9b5;color:#1a5c35;';
-    compUsageBanner.innerHTML = `<strong>✓ ${pullsThisMonth} of ${freeLimit} free pulls used this month</strong> — ${remaining} remaining.`;
+    compUsageBanner.innerHTML = `<strong>✓ ${pullsThisMonth} of ${freeLimit} searches used this month</strong> — ${remaining} remaining. Each search pulls up to 8 comparable properties.`;
   }
 }
 
@@ -1361,7 +1369,7 @@ async function fetchComps(){
       const r = json.radiusUsed ? `${json.radiusUsed} mi` : '—';
       const m = json.daysOldUsed ? `${Math.round(json.daysOldUsed/30)} mo` : '—';
       const droppedNote = dropped > 0 ? ` (${dropped} outlier${dropped>1?'s':''} removed — likely land/lot sales)` : '';
-      const poolNote = compPool.length > POOL_DISPLAY ? ` Showing 3 closest — delete one to load the next.` : '';
+      const poolNote = compPool.length > POOL_DISPLAY ? ` Showing 3 of ${compPool.length} pulled — delete any to see the next closest.` : '';
       compsStatusEl.textContent = `Found ${compPool.length} sold comp(s) within ${r}, last ${m}.${droppedNote}${poolNote}`;
     }
     showUsageBanner(json.usage);
