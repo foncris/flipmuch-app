@@ -8,7 +8,7 @@ const MAX_COMP_LIMIT = 15;
 // Number of comp pulls included in every subscription plan per calendar month.
 // Pulls 1–FREE_COMP_PULLS cost nothing extra; beyond this the user is warned
 // in the UI that the pull is billed at their plan's overage rate.
-const FREE_COMP_PULLS = 10;
+const FREE_COMP_PULLS = 5;
 // Hard cap on Property Records lookups per request across ALL escalation
 // stages combined. In the best case (first `limit` candidates are all
 // confirmed sold) we make exactly `limit` calls; this cap protects against

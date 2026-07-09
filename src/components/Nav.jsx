@@ -16,8 +16,12 @@ export default async function Nav() {
         {profile ? (
           <>
             <Link href="/app" className="nav-link">Calculator</Link>
+            <Link href="/billing" className="nav-link">Billing</Link>
             {profile.role === "admin" && (
-              <Link href="/admin/params" className="nav-link">Admin</Link>
+              <>
+                <Link href="/admin/users" className="nav-link">Users</Link>
+                <Link href="/admin/params" className="nav-link">Params</Link>
+              </>
             )}
             <SignOutButton />
           </>

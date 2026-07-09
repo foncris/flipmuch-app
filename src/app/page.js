@@ -111,13 +111,13 @@ export default async function HomePage() {
               <span style={{ fontSize: 16, fontWeight: 400, color: "var(--muted)" }}> / month</span>
             </div>
             <p style={{ color: "var(--muted)", fontSize: 14, margin: "10px 0 28px" }}>
-              Includes 10 comp pulls/month · $3.00 per extra pull
+              Includes 5 comp pulls/month · $3.00 per extra pull
             </p>
 
             <ul style={{ listStyle: "none", padding: 0, margin: "0 0 32px", textAlign: "left" }}>
               {[
                 "Full fix & flip deal analyzer",
-                "10 comparable sales searches / month",
+                "5 comparable sales searches / month",
                 "Up to 8 comps per search (1.5 mi radius)",
                 "Realtor, inspection & appraisal fees",
                 "60/70 rule with pass/caution/fail verdict",

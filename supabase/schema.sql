@@ -110,3 +110,29 @@ on conflict (id) do nothing;
 
 -- To promote a user to admin after they sign up, run:
 --   update public.profiles set role = 'admin' where email = 'you@example.com';
+
+
+-- ============ comp_usage ============
+-- Tracks how many comparable searches each user runs per calendar month.
+-- The first 10 pulls per month are included in the subscription; additional
+-- pulls beyond that are billed at an overage rate for the user's tier.
+create table if not exists public.comp_usage (
+  user_id   uuid    not null references auth.users(id) on delete cascade,
+  month     text    not null,   -- 'YYYY-MM', e.g. '2026-06'
+  pull_count integer not null default 0,
+  primary key (user_id, month)
+);
+
+alter table public.comp_usage enable row level security;
+
+-- Users can read their own monthly usage (shown in the app UI).
+create policy "comp_usage_select_own" on public.comp_usage
+  for select using (auth.uid() = user_id);
+
+-- The /api/comps server route runs with the authenticated user's session
+-- and upserts the row for that user. Allow insert + update for own row.
+create policy "comp_usage_insert_own" on public.comp_usage
+  for insert with check (auth.uid() = user_id);
+
+create policy "comp_usage_update_own" on public.comp_usage
+  for update using (auth.uid() = user_id);
