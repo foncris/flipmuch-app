@@ -215,6 +215,7 @@ export async function GET(request) {
         { maxRadius: 2,   daysOld: 180 },
         { maxRadius: 2,   daysOld: 365 },
         { maxRadius: 3,   daysOld: 365 },
+        { maxRadius: 5,   daysOld: 365 },
       ];
 
   // Cache Property Records lookups across all escalation stages — if a
@@ -296,8 +297,11 @@ export async function GET(request) {
             if (built.length >= limit) break;
             const addr = addressOf(c);
             if (usedAddrs.has(addr)) continue;
-            const price = c.price ?? null;
-            const sqft = c.squareFootage ?? null;
+            // Use AVM price first; fall back to cached property record's lastSalePrice
+            // (already fetched during the verified pass — no extra API calls).
+            const cachedRecord = recordCache.get(addr);
+            const price = c.price ?? cachedRecord?.lastSalePrice ?? null;
+            const sqft = c.squareFootage ?? cachedRecord?.squareFootage ?? null;
             if (!price || !sqft) continue;
             if (built.some((b) => b.price === price && b.sqft === sqft)) continue;
             built.push({
