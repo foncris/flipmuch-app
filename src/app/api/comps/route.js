@@ -85,18 +85,28 @@ function scoreComp(comp, subjSqft, subjYearBuilt) {
 }
 
 // Derive plain-text exclusion reasons for comps that didn't make the top-3.
+// Only hard-exclude on missing price or very old/low-correlation data.
+// Missing sqft is a data gap we note but do NOT exclude on — RentCast often
+// omits squareFootage in the AVM comparables array even for valid sales.
 function exclusionReasons(comp, subjSqft) {
   const reasons = [];
-  if (!comp.price)           reasons.push("no sale price available");
-  if (!comp.squareFootage)   reasons.push("no square footage data");
+  if (!comp.price)                                      reasons.push("no sale price available");
+  const ageDays = daysSince(comp.lastSaleDate);
+  if (ageDays !== null && ageDays > 545)                reasons.push("sold >18 months ago");
+  if ((comp.correlation ?? 0) < 0.05)                   reasons.push("correlation too low");
+  return reasons;
+}
+
+// Separate data notes (informational) from hard exclusions.
+function dataNotes(comp, subjSqft) {
+  const notes = [];
+  if (!comp.squareFootage)  notes.push("sqft not available");
+  if (!comp.lastSaleDate)   notes.push("sale date not available");
   if (subjSqft && comp.squareFootage) {
     const delta = Math.abs(comp.squareFootage - subjSqft) / subjSqft;
-    if (delta > 0.30) reasons.push(`sqft ${comp.squareFootage > subjSqft ? "+" : "-"}${Math.round(delta * 100)}% from subject`);
+    if (delta > 0.30) notes.push(`sqft ${comp.squareFootage > subjSqft ? "+" : "-"}${Math.round(delta * 100)}% from subject`);
   }
-  const ageDays = daysSince(comp.lastSaleDate);
-  if (ageDays !== null && ageDays > 545) reasons.push("sold >18 months ago");
-  if ((comp.correlation ?? 0) < 0.05)   reasons.push("correlation too low");
-  return reasons;
+  return notes;
 }
 
 export async function GET(request) {
@@ -183,7 +193,11 @@ export async function GET(request) {
         if (attempt.maxRadius >= 2.0) fallbackWarning = true;
       }
 
-      if (comps.length >= TARGET_COMPS) break; // tightest set that satisfies — stop here
+      // Break only when we have enough comps that have a sale price.
+      // Raw count alone can mislead — RentCast sometimes returns comps without
+      // price or key fields, so we check usable count to decide if loosening is needed.
+      const usableCount = comps.filter(c => c.price).length;
+      if (usableCount >= TARGET_COMPS) break;
     } catch (err) {
       lastError = err;
     }
@@ -218,6 +232,7 @@ export async function GET(request) {
       ppsqftOutlier,
       score:    scoreComp(c, subjSqft, subjYearBuilt),
       excluded: exclusionReasons(c, subjSqft),
+      notes:    dataNotes(c, subjSqft),
     };
   });
 
@@ -248,7 +263,7 @@ export async function GET(request) {
     soldDate:       c.lastSaleDate    ?? null,
     verified:       c.excluded.length === 0, // true = passed all quality checks
     correlation:    c.correlation     ?? null,
-    flagNote:       c.excluded.length > 0 ? c.excluded.join("; ") : null,
+    flagNote:       [...c.excluded, ...c.notes].length > 0 ? [...c.excluded, ...c.notes].join("; ") : null,
   }));
 
   // Surface exclusion reasons for comps NOT selected (up to 10, for transparency)
