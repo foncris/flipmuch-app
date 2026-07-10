@@ -128,7 +128,17 @@ function scoreComp(comp, subjSqft, subjYearBuilt) {
 // Missing sqft is NOT a hard exclusion — we attempt enrichment first.
 function hardExclusions(comp) {
   const reasons = [];
-  if (!comp.price)          reasons.push("no sale price available");
+  if (!comp.price) reasons.push("no sale price available");
+  if (comp.price) {
+    // Vacant lots sell for $3–20/sqft in most US markets; even severely distressed
+    // improved homes retain construction value well above $40/sqft. Anything below
+    // that threshold is almost certainly a land/lot transaction, not a residential comp.
+    if (comp.squareFootage && (comp.price / comp.squareFootage) < 40) {
+      reasons.push(`$${Math.round(comp.price / comp.squareFootage)}/sqft is below $40 — likely a vacant lot or land sale, not an improved residential property`);
+    } else if (!comp.squareFootage && comp.price < 50000) {
+      reasons.push(`sale price $${comp.price.toLocaleString()} is below $50,000 and sqft is unknown — likely a vacant lot sale`);
+    }
+  }
   if (!comp.lastSaleDate)   reasons.push("no confirmed closing date — may be a listing, not a closed sale");
   const ageDays = daysSince(comp.lastSaleDate);
   if (ageDays !== null && ageDays > 545)  reasons.push("sold >18 months ago — too stale for reliable value");
@@ -295,7 +305,11 @@ export async function GET(request) {
 
     // Prefer county deed price over AVM comp price — it's the authoritative
     // recorded transaction amount (what a lender or appraiser would use).
-    if (rec.lastSalePrice && rec.lastSaleDate) {
+    // BUT only when the price is in range for an improved residential property.
+    // In new-construction markets (e.g. Lehigh Acres FL), county records often
+    // show the prior lot sale price ($10k-$40k) — using that would replace a
+    // valid AVM comp price with a land transaction price.
+    if (rec.lastSalePrice && rec.lastSaleDate && rec.lastSalePrice >= 50000) {
       c.price = rec.lastSalePrice;
       c._priceFromRecord = true;
     }
