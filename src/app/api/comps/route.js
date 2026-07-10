@@ -133,13 +133,14 @@ function hardExclusions(comp) {
   const ageDays = daysSince(comp.lastSaleDate);
   if (ageDays !== null && ageDays > 545)  reasons.push("sold >18 months ago — too stale for reliable value");
   if ((comp.correlation ?? 0) < 0.05)    reasons.push("correlation too low");
+
   return reasons;
 }
 
 // Informational quality flags — shown to appraiser for manual review, do NOT disqualify.
 function qualityFlags(comp, subjSqft) {
   const flags = [];
-  if (!comp.squareFootage)  flags.push("sqft unavailable after enrichment — verify from county records");
+  if (!comp.squareFootage)   flags.push("sqft unavailable after enrichment — verify from county records");
   if (comp._priceFromRecord) flags.push("price from county deed record (more reliable than AVM estimate)");
   if (subjSqft && comp.squareFootage) {
     const pct = Math.abs(comp.squareFootage - subjSqft) / subjSqft;
@@ -147,6 +148,11 @@ function qualityFlags(comp, subjSqft) {
   }
   const ageDays = daysSince(comp.lastSaleDate);
   if (ageDays !== null && ageDays > 365) flags.push("sold >12 months ago — time adjustment recommended");
+  // Parcel combination address — county assessor format for multi-parcel transfers.
+  // May be a land or subdivision transaction rather than a residential sale; verify before using.
+  if (/\bLot\s+\d+\s+(And|&)\b/i.test(addressOf(comp))) {
+    flags.push("address suggests parcel combination (e.g. 'Lot N And …') — verify this is a residential sale, not a land/lot transfer");
+  }
   return flags;
 }
 
