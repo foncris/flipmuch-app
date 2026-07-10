@@ -10,9 +10,10 @@ const FREE_COMP_PULLS = 5;
 const COMP_COUNT = 25;
 // Final comps to surface to the user.
 const TARGET_COMPS = 3;
-// How many top candidates we enrich via Property Records when sqft is missing.
-// Keeps extra API calls bounded — we only look up the best candidates, not all 25.
-const MAX_ENRICH_CALLS = 6;
+// How many top candidates we enrich via Property Records.
+// We enrich for sqft AND confirmed sale date — a comp with no closing date
+// is unusable for appraisal purposes regardless of its correlation score.
+const MAX_ENRICH_CALLS = 10;
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -122,28 +123,30 @@ function scoreComp(comp, subjSqft, subjYearBuilt) {
   return score;
 }
 
-// Hard exclusion reasons — these are dealbreakers for a valid comp.
-// Missing sqft is NOT a hard exclusion here; we try to enrich it first.
+// Hard exclusion reasons — dealbreakers for a valid appraisal comp.
+// An appraiser cannot use a comp without a confirmed closing date or sale price.
+// Missing sqft is NOT a hard exclusion — we attempt enrichment first.
 function hardExclusions(comp) {
   const reasons = [];
-  if (!comp.price)                                   reasons.push("no sale price available");
+  if (!comp.price)          reasons.push("no sale price available");
+  if (!comp.lastSaleDate)   reasons.push("no confirmed closing date — may be a listing, not a closed sale");
   const ageDays = daysSince(comp.lastSaleDate);
-  if (ageDays !== null && ageDays > 545)             reasons.push("sold >18 months ago");
-  if ((comp.correlation ?? 0) < 0.05)               reasons.push("correlation too low");
+  if (ageDays !== null && ageDays > 545)  reasons.push("sold >18 months ago — too stale for reliable value");
+  if ((comp.correlation ?? 0) < 0.05)    reasons.push("correlation too low");
   return reasons;
 }
 
-// Informational quality flags — shown to user but do NOT disqualify the comp.
+// Informational quality flags — shown to appraiser for manual review, do NOT disqualify.
 function qualityFlags(comp, subjSqft) {
   const flags = [];
-  if (!comp.squareFootage)                          flags.push("sqft missing — could not enrich");
-  if (!comp.lastSaleDate)                           flags.push("sale date unknown");
+  if (!comp.squareFootage)  flags.push("sqft unavailable after enrichment — verify from county records");
+  if (comp._priceFromRecord) flags.push("price from county deed record (more reliable than AVM estimate)");
   if (subjSqft && comp.squareFootage) {
     const pct = Math.abs(comp.squareFootage - subjSqft) / subjSqft;
     if (pct > 0.25) flags.push(`GLA ${comp.squareFootage > subjSqft ? "+" : "-"}${Math.round(pct * 100)}% vs subject — size adjustment required`);
   }
   const ageDays = daysSince(comp.lastSaleDate);
-  if (ageDays !== null && ageDays > 365)            flags.push("sold >12 months ago — time adjustment recommended");
+  if (ageDays !== null && ageDays > 365) flags.push("sold >12 months ago — time adjustment recommended");
   return flags;
 }
 
@@ -265,19 +268,31 @@ export async function GET(request) {
     .map(c => ({ ...c, _preScore: scoreComp(c, subjSqft, subjYearBuilt) }))
     .sort((a, b) => a._preScore - b._preScore);
 
-  // Enrich the top candidates that are missing sqft
+  // Enrich top candidates via Property Records for ANY missing critical field.
+  // An appraiser requires a confirmed closing date to use a comp — so we fetch
+  // Property Records whenever sqft OR lastSaleDate is unknown, not just sqft.
+  // We also prefer the county deed lastSalePrice over the AVM's estimate when
+  // available: deed-recorded prices are the authoritative data source appraisers use.
   let enrichCalls = 0;
   for (const c of preScored) {
     if (enrichCalls >= MAX_ENRICH_CALLS) break;
-    if (c.squareFootage) continue; // already have it
+    const needsEnrich = !c.squareFootage || !c.lastSaleDate;
+    if (!needsEnrich) continue;
+
     const rec = await fetchPropertyRecord(addressOf(c));
-    if (rec?.squareFootage) {
-      c.squareFootage = rec.squareFootage;
-      c._enrichedSqft = true;
-    }
-    if (!c.yearBuilt && rec?.yearBuilt) c.yearBuilt = rec.yearBuilt;
-    if (!c.lastSaleDate  && rec?.lastSaleDate)  c.lastSaleDate  = rec.lastSaleDate;
     enrichCalls++;
+    if (!rec) continue;
+
+    if (!c.squareFootage  && rec.squareFootage)  { c.squareFootage = rec.squareFootage; c._enrichedSqft = true; }
+    if (!c.yearBuilt      && rec.yearBuilt)       c.yearBuilt = rec.yearBuilt;
+    if (!c.lastSaleDate   && rec.lastSaleDate)    c.lastSaleDate = rec.lastSaleDate;
+
+    // Prefer county deed price over AVM comp price — it's the authoritative
+    // recorded transaction amount (what a lender or appraiser would use).
+    if (rec.lastSalePrice && rec.lastSaleDate) {
+      c.price = rec.lastSalePrice;
+      c._priceFromRecord = true;
+    }
   }
 
   // ── STEP 3: Final ranking after enrichment ────────────────────────────────
