@@ -200,14 +200,20 @@ export async function GET(request) {
   const subjYearBuilt = searchParams.get("yearBuilt") ? Number(searchParams.get("yearBuilt")) : null;
 
   // ── STEP 1: Progressive loosening ────────────────────────────────────────
-  // Tightest radius/recency first. Stop as soon as we have enough PRICED comps
-  // (price is the only field we can't recover from another source).
-  // sqft gaps are filled in Step 2 via Property Records enrichment.
-  const attempts = [
-    { maxRadius: 0.5, daysOld: 180, label: "0.5 mi / 6 mo"  },
-    { maxRadius: 1.0, daysOld: 365, label: "1.0 mi / 12 mo" },
-    { maxRadius: 2.0, daysOld: 545, label: "2.0 mi / 18 mo" },
-  ];
+  // When the user overrides radius/days via the Search Options panel in the UI,
+  // collapse to a single locked attempt using those values.
+  // Otherwise use the progressive ladder: tightest first, widen until we have
+  // enough priced comps (price is the only field we can't recover from Property Records).
+  const overrideRadius = searchParams.get("maxRadius")  ? Number(searchParams.get("maxRadius"))  : null;
+  const overrideDays   = searchParams.get("maxDaysOld") ? Number(searchParams.get("maxDaysOld")) : null;
+
+  const attempts = (overrideRadius || overrideDays)
+    ? [{ maxRadius: overrideRadius ?? 2.0, daysOld: overrideDays ?? 365, label: "custom" }]
+    : [
+        { maxRadius: 0.5, daysOld: 180, label: "0.5 mi / 6 mo"  },
+        { maxRadius: 1.0, daysOld: 365, label: "1.0 mi / 12 mo" },
+        { maxRadius: 2.0, daysOld: 545, label: "2.0 mi / 18 mo" },
+      ];
 
   let allComps      = [];
   let usedAttempt   = null;

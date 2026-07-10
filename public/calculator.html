@@ -1331,7 +1331,7 @@ async function fetchComps(){
   findCompsBtn.disabled = true;
 
   try{
-    const qs = new URLSearchParams({ address, sqft, beds, baths, propertyType, key: COMPS_KEY });
+    const qs = new URLSearchParams({ address, sqft, beds, baths, yearBuilt: year, propertyType, key: COMPS_KEY });
     const optLimit  = $('optCompCount')?.value; if(optLimit)  qs.set('limit', optLimit);
     const optRadius = $('optRadius')?.value;    if(optRadius) qs.set('maxRadius', optRadius);
     const optDays   = $('optDays')?.value;      if(optDays)   qs.set('maxDaysOld', optDays);
